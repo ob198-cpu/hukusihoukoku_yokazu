@@ -1350,6 +1350,23 @@ tbody tr:nth-child(even) td {
   font-weight: 500;
 }
 
+.cloud-status {
+  display: inline-flex;
+  align-items: center;
+  align-self: center;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: #eef2ff;
+  color: #1e3a8a;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: var(--shadow-soft);
+}
+
+.cloud-status.ok { background: #ecfdf5; color: #065f46; }
+.cloud-status.syncing { background: #eff6ff; color: #1d4ed8; }
+.cloud-status.error { background: #fff1f2; color: #be123c; }
+
 .stack.input-form-panel {
   display: none;
 }
@@ -1870,6 +1887,7 @@ tbody tr:nth-child(even) td {
       <button class="tab" data-view="input">入力シート</button>
       <button class="tab" data-view="summary">集計</button>
     </nav>
+    <div class="cloud-status syncing no-print" id="cloud-status">シート確認中</div>
   </header>
 
   <main>
@@ -2295,6 +2313,7 @@ tbody tr:nth-child(even) td {
 
   <script>
     const STORAGE_KEY = "sns_operation_report_single_site_v3";
+    const CLOUD_API_URL = "https://script.google.com/macros/s/AKfycbyVEDmJgDzYyzHmiqXHKl31v6m7PxQAfR9eELubQ_ujomqvv3zWcB_yQmGb2oJP9e_Keg/exec";
     const businesses = ["自事業所"];
     const monitoringUsers = ["大場", "A", "B", "C", "D", "E", "F"];
     const snsTypes = ["X", "Instagram", "TikTok", "Threads", "YouTube"];
@@ -2305,6 +2324,8 @@ tbody tr:nth-child(even) td {
     let postSort = { key: "date", direction: "desc" };
     let summaryBreakdownMode = "week";
     let workBreakdownMode = "day";
+    let cloudSyncReady = false;
+    let cloudSaveTimer = null;
 
     const $ = selector => document.querySelector(selector);
     const $$ = selector => Array.from(document.querySelectorAll(selector));
@@ -2571,6 +2592,84 @@ tbody tr:nth-child(even) td {
 
     function saveData(data) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      if (cloudSyncReady) scheduleCloudSave(data);
+    }
+
+    function cloudEnabled() {
+      return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(String(CLOUD_API_URL || "").trim());
+    }
+
+    function setCloudStatus(text, type = "syncing") {
+      const target = $("#cloud-status");
+      if (!target) return;
+      target.textContent = text;
+      target.className = `cloud-status ${type} no-print`;
+    }
+
+    async function cloudRequest(action, payload = {}) {
+      if (!cloudEnabled()) throw new Error("保存先URLが未設定です。");
+      const response = await fetch(CLOUD_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify({ action, ...payload })
+      });
+      const text = await response.text();
+      let result;
+      try {
+        result = JSON.parse(text);
+      } catch {
+        throw new Error("Apps Scriptの初回承認または公開設定を確認してください。");
+      }
+      if (!response.ok || !result.ok) throw new Error(result.error || "シート保存に失敗しました。");
+      return result.data || {};
+    }
+
+    function cloudDataHasRows(snapshot) {
+      return ["posts", "workMetrics", "followers", "inquiries", "lsteps", "monitoring", "agencyNotices", "history"]
+        .some(key => Array.isArray(snapshot?.[key]) && snapshot[key].length);
+    }
+
+    function scheduleCloudSave(snapshot) {
+      if (!cloudEnabled()) return;
+      const payload = normalizeData(cloneRecord(snapshot));
+      clearTimeout(cloudSaveTimer);
+      setCloudStatus("シート保存中", "syncing");
+      cloudSaveTimer = setTimeout(() => saveCloudData(payload), 500);
+    }
+
+    async function saveCloudData(snapshot) {
+      try {
+        await cloudRequest("saveData", { data: snapshot });
+        setCloudStatus("シート保存済み", "ok");
+      } catch (error) {
+        setCloudStatus("シート保存エラー: " + error.message, "error");
+      }
+    }
+
+    async function initCloudSync() {
+      if (!cloudEnabled()) {
+        setCloudStatus("ローカル保存中", "error");
+        return;
+      }
+      setCloudStatus("シート読込中", "syncing");
+      try {
+        cloudSyncReady = false;
+        const result = await cloudRequest("loadData");
+        const cloudData = normalizeData(result.data || {});
+        if (cloudDataHasRows(cloudData)) {
+          data = cloudData;
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+          setupForms();
+          renderAll();
+          setCloudStatus("シート読込済み", "ok");
+        } else {
+          setCloudStatus("シート保存準備完了", "ok");
+        }
+        cloudSyncReady = true;
+      } catch (error) {
+        cloudSyncReady = true;
+        setCloudStatus("シート接続エラー: " + error.message, "error");
+      }
     }
 
     let data = loadData();
@@ -4492,6 +4591,7 @@ tbody tr:nth-child(even) td {
 
     setupForms();
     renderAll();
+    initCloudSync();
   </script>
 </body>
 </html>
