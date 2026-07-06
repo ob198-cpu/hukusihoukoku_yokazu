@@ -390,13 +390,13 @@ textarea { min-height: 90px; resize: vertical; }
 .report-slide {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-lg);
-  margin: 0 0 32px 0;
-  padding: 40px 48px;
-  min-height: 680px;
+  margin: 0;
+  padding: 20px 28px;
+  min-height: auto;
   background: var(--card-bg);
   box-shadow: var(--shadow-lg);
   position: relative;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .report-slide::before {
@@ -410,7 +410,7 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .report-slide + .report-slide {
-  margin-top: 32px;
+  margin-top: 16px;
 }
 
 .report-title {
@@ -449,6 +449,37 @@ textarea { min-height: 90px; resize: vertical; }
   padding: 16px;
   border-radius: 8px;
   border: 1px solid var(--border-color);
+}
+
+.report-slide > .week-controls {
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 6px 10px;
+}
+
+.report-slide > .week-controls .btn {
+  padding: 7px 12px;
+}
+
+.report-slide > .week-controls .week-select-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 260px;
+}
+
+.report-slide > .week-controls .week-select-label select {
+  margin-top: 0;
+}
+
+.report-slide > .week-controls .week-range-card {
+  min-width: 190px;
+  padding: 6px 10px;
+}
+
+.report-slide > .week-controls .week-range-card span {
+  margin-bottom: 2px;
 }
 
 .week-controls .grid-3 {
@@ -526,10 +557,10 @@ textarea { min-height: 90px; resize: vertical; }
 
 .slide1-top {
   display: grid;
-  grid-template-columns: 360px 1fr 1fr;
-  gap: 32px;
+  grid-template-columns: minmax(260px, 1.1fr) repeat(2, minmax(180px, 0.7fr));
+  gap: 14px;
   align-items: stretch;
-  margin-bottom: 32px;
+  margin-bottom: 10px;
 }
 
 .inquiry-summary-box {
@@ -538,7 +569,7 @@ textarea { min-height: 90px; resize: vertical; }
   justify-content: center;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 24px;
+  padding: 14px 16px;
   background: linear-gradient(135deg, #f5f3ff, #eff6ff); /* 極薄のインディゴ・ブルーのグラデーション */
   color: var(--text-main);
   text-align: center;
@@ -560,21 +591,22 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .inquiry-summary-box .month-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  margin-bottom: 20px;
+  margin-bottom: 10px;
   color: var(--primary);
   letter-spacing: 0.05em;
 }
 
 .inquiry-summary-box .sub-counts {
   display: grid;
-  grid-template-columns: 1fr auto;
-  column-gap: 16px;
-  row-gap: 10px;
+  grid-template-columns: repeat(6, auto);
+  column-gap: 8px;
+  row-gap: 4px;
   align-items: center;
-  font-size: 13px;
-  text-align: left;
+  justify-content: center;
+  font-size: 11px;
+  text-align: center;
 }
 
 .inquiry-summary-box .sub-counts span {
@@ -582,21 +614,21 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .inquiry-summary-box .sub-counts strong {
-  font-size: 15px;
+  font-size: 13px;
   color: var(--text-main);
   font-weight: 700;
 }
 
 .inquiry-summary-box .sub-counts span:nth-last-child(2),
 .inquiry-summary-box .sub-counts strong:last-child {
-  border-top: 1px solid rgba(15, 23, 42, 0.08);
-  padding-top: 8px;
-  margin-top: 6px;
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
 }
 
 .inquiry-summary-box .sub-counts strong:last-child {
   color: var(--primary);
-  font-size: 20px;
+  font-size: 14px;
 }
 
 .manual-badge {
@@ -620,16 +652,17 @@ textarea { min-height: 90px; resize: vertical; }
 
 .chart-area {
   display: grid;
-  align-content: space-between;
+  align-content: stretch;
   justify-items: center;
-  gap: 16px;
+  gap: 8px;
 }
 
 .total-box {
   width: 100%;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  padding: 16px;
+  min-height: 58px;
+  padding: 10px 12px;
   background: #f1f5f9;
   text-align: center;
   font-size: 13px;
@@ -651,7 +684,7 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .total-box span {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 800;
   color: var(--text-main);
 }
@@ -674,12 +707,12 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .pie-wrap {
-  display: flex;
+  display: none;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
   width: 100%;
-  padding: 16px;
+  padding: 10px 12px;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   background: #f1f5f9;
@@ -703,8 +736,8 @@ textarea { min-height: 90px; resize: vertical; }
 
 .pie-chart {
   position: relative;
-  width: 130px;
-  height: 130px;
+  width: 82px;
+  height: 82px;
   border-radius: 50%;
   background:
     radial-gradient(circle at center, #fff 0 44%, transparent 45%),
@@ -727,13 +760,13 @@ textarea { min-height: 90px; resize: vertical; }
 
 .pie-legend {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 8px;
   width: 100%;
-  font-size: 10px;
+  font-size: 9px;
   border-top: 1px solid var(--border-color);
-  padding-top: 10px;
-  margin-top: 4px;
+  padding-top: 8px;
+  margin-top: 2px;
 }
 
 .pie-legend span {
@@ -753,8 +786,8 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .period-title {
-  margin: 0 0 20px 0;
-  font-size: 16px;
+  margin: 0 0 8px 0;
+  font-size: 15px;
   font-weight: 800;
   color: var(--text-main);
   display: flex;
@@ -778,6 +811,21 @@ textarea { min-height: 90px; resize: vertical; }
   align-items: start;
 }
 
+.report-compact-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  align-items: stretch;
+}
+
+.report-compact-grid > .large-outline-box:nth-last-child(2) {
+  grid-column: span 2;
+}
+
+.report-compact-grid > .large-outline-box:last-child {
+  grid-column: span 3;
+}
+
 .sns-two {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -787,7 +835,7 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .sns-box h3 {
-  margin: 0 0 12px 0;
+  margin: 0 0 8px 0;
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 700;
@@ -797,18 +845,18 @@ textarea { min-height: 90px; resize: vertical; }
 
 .mock-post-list {
   display: grid;
-  gap: 10px;
+  gap: 6px;
 }
 
 .mock-post-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  min-height: 52px;
-  padding: 8px 14px;
+  min-height: 36px;
+  padding: 6px 10px;
   background: #f1f5f9;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: var(--shadow-sm);
@@ -838,15 +886,15 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .mock-post-row span:first-child {
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
   white-space: nowrap;
 }
 
 .mock-post-row span:nth-child(2) {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-main);
   font-weight: 500;
   white-space: nowrap;
@@ -855,9 +903,9 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .mock-post-row small {
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
-  padding: 2px 8px;
+  padding: 2px 6px;
   border-radius: 4px;
   white-space: nowrap;
 }
@@ -902,8 +950,8 @@ textarea { min-height: 90px; resize: vertical; }
   position: relative;
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  min-height: 180px;
-  padding: 24px;
+  min-height: 88px;
+  padding: 14px;
   background: #f1f5f9;
   box-shadow: var(--shadow-sm);
   display: flex;
@@ -918,9 +966,9 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .large-outline-box h3 {
-  margin: 0 0 16px;
+  margin: 0 0 10px;
   color: var(--text-main);
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
 }
 
@@ -928,7 +976,7 @@ textarea { min-height: 90px; resize: vertical; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
   width: 100%;
 }
 
@@ -938,8 +986,8 @@ textarea { min-height: 90px; resize: vertical; }
 
 .detail-mini-btn {
   position: absolute;
-  top: 20px;
-  right: 24px;
+  top: 12px;
+  right: 14px;
   border: 1px solid var(--primary);
   border-radius: 6px;
   padding: 6px 14px;
@@ -960,9 +1008,9 @@ textarea { min-height: 90px; resize: vertical; }
 .lstep-three {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  gap: 8px;
   align-items: stretch;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   margin-top: auto;
   margin-bottom: auto;
@@ -972,7 +1020,7 @@ textarea { min-height: 90px; resize: vertical; }
   text-align: center;
   border: 1px solid var(--border-color);
   border-radius: 6px;
-  padding: 12px;
+  padding: 10px 8px;
   background: #ffffff;
   box-shadow: var(--shadow-sm);
   transition: all 0.2s ease;
@@ -989,14 +1037,14 @@ textarea { min-height: 90px; resize: vertical; }
   border-radius: var(--radius-md);
   margin-top: auto;
   margin-bottom: auto;
-  min-height: 52px;
+  min-height: 38px;
   display: grid;
   grid-template-columns: auto auto 1fr;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
-  padding: 0 14px;
+  padding: 0 12px;
   background: #ffffff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
   box-shadow: var(--shadow-sm);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1893,8 +1941,13 @@ tbody tr:nth-child(even) td {
     grid-template-columns: 1fr;
   }
 
-  .grid-2, .grid-3, .input-layout, .bottom-grid, .slide1-top, .sns-three, .sns-two, .slide2-bottom, .follower-summary-grid {
+  .grid-2, .grid-3, .input-layout, .bottom-grid, .slide1-top, .sns-three, .sns-two, .slide2-bottom, .report-compact-grid, .follower-summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .report-compact-grid > .large-outline-box:nth-last-child(2),
+  .report-compact-grid > .large-outline-box:last-child {
+    grid-column: auto;
   }
 
   .report-slide {
@@ -1968,7 +2021,7 @@ tbody tr:nth-child(even) td {
 
           <div class="period-title" id="period-label">〇月〇日～〇月〇日　投稿</div>
 
-          <div class="sns-three">
+          <div class="report-compact-grid">
             <div class="sns-box">
               <h3>X（最大5投稿）</h3>
               <div class="mock-post-list" id="x-posts"></div>
@@ -1981,12 +2034,6 @@ tbody tr:nth-child(even) td {
               <h3>tiktok</h3>
               <div class="mock-post-list" id="tiktok-posts"></div>
             </div>
-          </div>
-        </section>
-
-        <section class="report-slide">
-          <div class="slide2-top-space"></div>
-          <div class="sns-two">
             <div class="sns-box">
               <h3>threads</h3>
               <div class="mock-post-list" id="threads-posts"></div>
@@ -1995,9 +2042,6 @@ tbody tr:nth-child(even) td {
               <h3>youtube</h3>
               <div class="mock-post-list" id="youtube-posts"></div>
             </div>
-          </div>
-
-          <div class="slide2-bottom">
             <div class="large-outline-box">
               <h3>LステップLINE送信通数（<span id="lstep-check-label">〇月〇日</span>チェック）</h3>
               <div class="lstep-three" id="lstep-report"></div>
