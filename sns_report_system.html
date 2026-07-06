@@ -3367,11 +3367,11 @@ tbody tr:nth-child(even) td {
       form.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
-    function cancelPostEdit() {
-      cancelRecordEdit("post");
+    function cancelPostEdit(showNotice = false) {
+      cancelRecordEdit("post", showNotice);
     }
 
-    function cancelRecordEdit(type) {
+    function cancelRecordEdit(type, showNotice = false) {
       const form = $(`#${type}-form`);
       if (!form) return;
       form.reset();
@@ -3379,6 +3379,7 @@ tbody tr:nth-child(even) td {
       if (idField) idField.value = "";
       setRecordFormMode(type, "new");
       setupForms();
+      if (showNotice) window.alert("この編集をキャンセルしました");
     }
 
     function recordCollection(type) {
@@ -4160,11 +4161,11 @@ tbody tr:nth-child(even) td {
       renderAll();
     });
 
-    $("#post-edit-cancel").addEventListener("click", cancelPostEdit);
-    $("#work-edit-cancel").addEventListener("click", () => cancelRecordEdit("work"));
-    $("#follower-edit-cancel").addEventListener("click", () => cancelRecordEdit("follower"));
-    $("#inquiry-edit-cancel").addEventListener("click", () => cancelRecordEdit("inquiry"));
-    $("#lstep-edit-cancel").addEventListener("click", () => cancelRecordEdit("lstep"));
+    $("#post-edit-cancel").addEventListener("click", () => cancelPostEdit(true));
+    $("#work-edit-cancel").addEventListener("click", () => cancelRecordEdit("work", true));
+    $("#follower-edit-cancel").addEventListener("click", () => cancelRecordEdit("follower", true));
+    $("#inquiry-edit-cancel").addEventListener("click", () => cancelRecordEdit("inquiry", true));
+    $("#lstep-edit-cancel").addEventListener("click", () => cancelRecordEdit("lstep", true));
 
     $("#work-form").addEventListener("submit", event => {
       event.preventDefault();
