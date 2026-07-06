@@ -1411,6 +1411,46 @@ tbody tr:nth-child(even) td {
   font-size: 13px;
 }
 
+.work-input-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.work-input-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 620px;
+}
+
+.work-input-table th,
+.work-input-table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.work-input-table th {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: left;
+  background: #f8fafc;
+}
+
+.work-input-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.work-input-table select,
+.work-input-table input {
+  width: 100%;
+}
+
+.work-input-table-wrap + #add-work-row {
+  margin-top: 12px;
+}
+
 .record-list {
   max-height: 580px;
   overflow: auto;
@@ -2035,24 +2075,15 @@ tbody tr:nth-child(even) td {
             </div>
             <fieldset class="field-group">
               <legend>作品ごとのインプレッション/再生数</legend>
-              <div class="follower-bulk-grid" id="work-metric-body">
-                <div class="follower-bulk-row">
-                  <input type="text" name="workName" value="投稿1" aria-label="作品名1">
-                  <input type="number" min="0" name="workValue" value="0" aria-label="投稿1の数値">
-                </div>
-                <div class="follower-bulk-row">
-                  <input type="text" name="workName" value="投稿2" aria-label="作品名2">
-                  <input type="number" min="0" name="workValue" value="0" aria-label="投稿2の数値">
-                </div>
-                <div class="follower-bulk-row">
-                  <input type="text" name="workName" value="投稿3" aria-label="作品名3">
-                  <input type="number" min="0" name="workValue" value="0" aria-label="投稿3の数値">
-                </div>
-                <div class="follower-bulk-row">
-                  <input type="text" name="workName" value="投稿4" aria-label="作品名4">
-                  <input type="number" min="0" name="workValue" value="0" aria-label="投稿4の数値">
-                </div>
+              <div class="work-input-table-wrap">
+                <table class="work-input-table">
+                  <thead>
+                    <tr><th>作品</th><th>インプレッション/再生数</th><th>操作</th></tr>
+                  </thead>
+                  <tbody id="work-metric-body"></tbody>
+                </table>
               </div>
+              <button class="btn small" type="button" id="add-work-row">行を追加</button>
             </fieldset>
             <div class="post-form-actions">
               <button class="btn primary" type="submit" id="work-submit-button">作品別推移を登録</button>
@@ -3405,10 +3436,7 @@ tbody tr:nth-child(even) td {
       if (type === "work") {
         form.elements.date.value = item.date || todayIso();
         form.elements.operator.value = item.operator || "";
-        const names = Array.from(form.querySelectorAll("input[name='workName']"));
-        const values = Array.from(form.querySelectorAll("input[name='workValue']"));
-        names.forEach((input, index) => input.value = index === 0 ? (item.workName || "") : "");
-        values.forEach((input, index) => input.value = index === 0 ? Number(item.impressions || 0) : 0);
+        renderWorkMetricRows([{ workName: item.workName || "", impressions: Number(item.impressions || 0) }]);
       }
       if (type === "follower") {
         form.elements.date.value = item.date || todayIso();
@@ -3813,6 +3841,78 @@ tbody tr:nth-child(even) td {
       renderSummary();
     }
 
+    function workMetricNameFromPost(post) {
+      const date = post.date ? dateLabel(post.date) : "";
+      const sns = post.sns || "";
+      const content = String(post.content || "").trim() || "投稿内容未入力";
+      return [date, sns, content].filter(Boolean).join(" ");
+    }
+
+    function workMetricCandidates(selected = "") {
+      const seen = new Set();
+      const items = [];
+      const add = name => {
+        const value = String(name || "").trim();
+        if (!value || seen.has(value)) return;
+        seen.add(value);
+        items.push(value);
+      };
+      [...data.posts]
+        .sort((a, b) => `${b.date || ""}_${b.inputAt || ""}`.localeCompare(`${a.date || ""}_${a.inputAt || ""}`))
+        .forEach(post => add(workMetricNameFromPost(post)));
+      data.workMetrics.forEach(item => add(item.workName));
+      add(selected);
+      if (!items.length) ["投稿1", "投稿2", "投稿3", "投稿4"].forEach(add);
+      return items;
+    }
+
+    function workMetricOptions(selected = "") {
+      return ['<option value="">作品を選択</option>'].concat(
+        workMetricCandidates(selected).map(name => `<option value="${escapeHtml(name)}" ${name === selected ? "selected" : ""}>${escapeHtml(name)}</option>`)
+      ).join("");
+    }
+
+    function defaultWorkMetricEntries() {
+      return workMetricCandidates().map(workName => ({ workName, impressions: 0 }));
+    }
+
+    function workMetricRowHtml(entry = {}) {
+      const workName = entry.workName || "";
+      const impressions = Number(entry.impressions || 0);
+      return `
+        <tr>
+          <td><select name="workName" aria-label="作品を選択">${workMetricOptions(workName)}</select></td>
+          <td><input type="number" min="0" name="workValue" value="${impressions}" aria-label="インプレッション/再生数"></td>
+          <td><button class="btn small" type="button" data-remove-work-row>削除</button></td>
+        </tr>
+      `;
+    }
+
+    function renderWorkMetricRows(entries = null) {
+      const body = $("#work-metric-body");
+      if (!body) return;
+      const rows = entries && entries.length ? entries : defaultWorkMetricEntries();
+      body.innerHTML = rows.map(workMetricRowHtml).join("");
+    }
+
+    function addWorkMetricRow(entry = {}) {
+      const body = $("#work-metric-body");
+      if (!body) return;
+      body.insertAdjacentHTML("beforeend", workMetricRowHtml(entry));
+    }
+
+    function removeWorkMetricRow(button) {
+      const body = $("#work-metric-body");
+      const row = button.closest("tr");
+      if (!body || !row) return;
+      if (body.querySelectorAll("tr").length <= 1) {
+        row.querySelector("select[name='workName']").value = "";
+        row.querySelector("input[name='workValue']").value = 0;
+        return;
+      }
+      row.remove();
+    }
+
     function setupForms() {
       setOptions($("#report-business"), businesses, businesses[0]);
       const currentWeek = thisWeekRange();
@@ -3828,6 +3928,7 @@ tbody tr:nth-child(even) td {
       $$("select[name='type']").forEach(select => setOptions(select, inquiryTypes));
       $$("select[name='status']").forEach(select => setOptions(select, inquiryStatuses));
       $$("select[name='account']").forEach(select => setOptions(select, data.accounts.map(a => a.name)));
+      renderWorkMetricRows();
       renderFollowerBulkInputs();
       $$("input[name='date'], input[name='checkDate']").forEach(input => input.value = todayIso());
       syncInputWeeks();
@@ -4166,6 +4267,11 @@ tbody tr:nth-child(even) td {
     $("#follower-edit-cancel").addEventListener("click", () => cancelRecordEdit("follower", true));
     $("#inquiry-edit-cancel").addEventListener("click", () => cancelRecordEdit("inquiry", true));
     $("#lstep-edit-cancel").addEventListener("click", () => cancelRecordEdit("lstep", true));
+    $("#add-work-row").addEventListener("click", () => addWorkMetricRow());
+    $("#work-metric-body").addEventListener("click", event => {
+      const button = event.target.closest("[data-remove-work-row]");
+      if (button) removeWorkMetricRow(button);
+    });
 
     $("#work-form").addEventListener("submit", event => {
       event.preventDefault();
@@ -4173,8 +4279,10 @@ tbody tr:nth-child(even) td {
       const value = formObject(form);
       const workId = value.workId;
       delete value.workId;
-      const names = Array.from(form.querySelectorAll("input[name='workName']")).map(input => input.value.trim());
-      const values = Array.from(form.querySelectorAll("input[name='workValue']")).map(input => Number(input.value || 0));
+      const entries = Array.from(form.querySelectorAll("#work-metric-body tr")).map(row => ({
+        workName: row.querySelector("[name='workName']")?.value.trim() || "",
+        impressions: Number(row.querySelector("[name='workValue']")?.value || 0)
+      })).filter(entry => entry.workName);
       const inputAt = new Date().toISOString();
       if (workId) {
         const target = data.workMetrics.find(item => item.id === workId);
@@ -4184,15 +4292,16 @@ tbody tr:nth-child(even) td {
           renderAll();
           return;
         }
-        if (!names[0]) {
-          alert("作品名を入力してください。");
+        if (!entries.length) {
+          alert("作品を選択してください。");
           return;
         }
+        const entry = entries[0];
         const before = cloneRecord(target);
         Object.assign(target, {
           date: value.date,
-          workName: names[0],
-          impressions: values[0] || 0,
+          workName: entry.workName,
+          impressions: entry.impressions,
           operator: value.operator,
           updatedAt: inputAt
         });
@@ -4202,13 +4311,16 @@ tbody tr:nth-child(even) td {
         renderAll();
         return;
       }
-      names.forEach((workName, index) => {
-        if (!workName) return;
+      if (!entries.length) {
+        alert("作品を1件以上選択してください。");
+        return;
+      }
+      entries.forEach(entry => {
         const row = {
           id: uid(),
           date: value.date,
-          workName,
-          impressions: values[index] || 0,
+          workName: entry.workName,
+          impressions: entry.impressions,
           operator: value.operator,
           inputAt
         };
