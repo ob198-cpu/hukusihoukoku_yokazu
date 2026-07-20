@@ -1557,8 +1557,24 @@ tbody tr:nth-child(even) td {
 .work-input-table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 1180px;
+  min-width: 1600px;
+  table-layout: fixed;
 }
+
+.work-input-table th:nth-child(1),
+.work-input-table td:nth-child(1) { width: 105px; }
+.work-input-table th:nth-child(2),
+.work-input-table td:nth-child(2) { width: 86px; }
+.work-input-table th:nth-child(3),
+.work-input-table td:nth-child(3) { width: 170px; }
+.work-input-table th:nth-child(4),
+.work-input-table td:nth-child(4) { width: 430px; }
+.work-input-table th:nth-child(5),
+.work-input-table td:nth-child(5) { width: 132px; }
+.work-input-table th:nth-child(n+6):nth-child(-n+11),
+.work-input-table td:nth-child(n+6):nth-child(-n+11) { width: 96px; }
+.work-input-table th:nth-child(12),
+.work-input-table td:nth-child(12) { width: 92px; }
 
 .work-input-table th,
 .work-input-table td {
@@ -1583,8 +1599,26 @@ tbody tr:nth-child(even) td {
   width: 100%;
 }
 
-.work-input-table-wrap + #add-work-row {
-  margin-top: 12px;
+.work-input-table input[type="number"] {
+  min-width: 76px;
+  padding: 8px 10px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.work-content-cell {
+  display: -webkit-box;
+  overflow: hidden;
+  color: var(--text-main);
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.work-theme-input {
+  min-width: 140px;
+  padding: 8px 10px;
 }
 
 .record-list {
@@ -2257,7 +2291,7 @@ tbody tr:nth-child(even) td {
             </div>
             <div class="work-filter-status" id="work-filter-count">-</div>
             <fieldset class="field-group">
-              <legend>作品ごとの実績</legend>
+              <legend>登録済み投稿の実績</legend>
               <div class="work-input-table-wrap">
                 <table class="work-input-table">
                   <thead>
@@ -2266,7 +2300,6 @@ tbody tr:nth-child(even) td {
                   <tbody id="work-metric-body"></tbody>
                 </table>
               </div>
-              <button class="btn small" type="button" id="add-work-row">行を追加</button>
             </fieldset>
             <div class="post-form-actions">
               <button class="btn" type="button" id="work-edit-cancel" hidden>編集をキャンセル</button>
@@ -4331,6 +4364,7 @@ tbody tr:nth-child(even) td {
           const latest = latestMetrics.get(workName);
           entries.set(workName, {
             workName,
+            postId: post.id || latest?.postId || "",
             sns: post.sns || latest?.sns || "",
             postDate: post.date || latest?.postDate || latest?.date || "",
             theme: post.theme || latest?.theme || "",
@@ -4343,6 +4377,7 @@ tbody tr:nth-child(even) td {
         if (entries.has(workName)) return;
         entries.set(workName, {
           workName,
+          postId: latest.postId || "",
           sns: latest.sns || "",
           postDate: latest.postDate || latest.date || "",
           theme: latest.theme || "",
@@ -4392,15 +4427,16 @@ tbody tr:nth-child(even) td {
       const impressions = Number(entry.impressions || 0);
       const sns = entry.sns || "";
       const postDate = entry.postDate || entry.date || "";
+      const content = entry.content || workName || "投稿内容未入力";
       return `
-        <tr data-work-row data-work-id="${escapeHtml(entry.editId || "")}" data-work-sns="${escapeHtml(sns)}" data-work-post-date="${escapeHtml(postDate)}" data-work-theme="${escapeHtml(entry.theme || "")}">
+        <tr data-work-row data-work-id="${escapeHtml(entry.editId || "")}" data-work-post-id="${escapeHtml(entry.postId || "")}" data-work-sns="${escapeHtml(sns)}" data-work-post-date="${escapeHtml(postDate)}">
           <td>${escapeHtml(sns || "-")}</td>
           <td>${escapeHtml(dateLabel(postDate))}</td>
-          <td>${escapeHtml(entry.theme || "-")}</td>
-          <td><select name="workName" aria-label="作品を選択">${workMetricOptions(workName)}</select></td>
+          <td><input class="work-theme-input" type="text" name="workTheme" value="${escapeHtml(entry.theme || "")}" placeholder="テーマ未入力" aria-label="投稿テーマ"></td>
+          <td><div class="work-content-cell" title="${escapeHtml(content)}">${escapeHtml(content)}</div><input type="hidden" name="workName" value="${escapeHtml(workName)}"></td>
           <td><input type="number" min="0" name="workValue" value="${impressions}" aria-label="インプレッション/再生数"></td>
           ${engagementInputsHtml(entry)}
-          <td><div class="record-actions"><button class="btn primary small" type="button" data-save-work-row>保存</button><button class="btn small" type="button" data-remove-work-row>削除</button></div></td>
+          <td><button class="btn primary small" type="button" data-save-work-row>保存</button></td>
         </tr>
       `;
     }
@@ -4418,25 +4454,6 @@ tbody tr:nth-child(even) td {
       if (!target) return;
       const filters = currentWorkMetricFilters();
       target.textContent = `${filters.sns ? `SNS: ${filters.sns}` : "全SNS"} / ${filters.month ? `月: ${filters.month}` : "全期間"} / ${visibleCount}件表示`;
-    }
-
-    function addWorkMetricRow(entry = {}) {
-      const body = $("#work-metric-body");
-      if (!body) return;
-      body.insertAdjacentHTML("beforeend", workMetricRowHtml(entry));
-    }
-
-    function removeWorkMetricRow(button) {
-      const body = $("#work-metric-body");
-      const row = button.closest("tr");
-      if (!body || !row) return;
-      if (body.querySelectorAll("tr").length <= 1) {
-        row.remove();
-        updateWorkFilterStatus(0);
-        return;
-      }
-      row.remove();
-      updateWorkFilterStatus(body.querySelectorAll("tr").length);
     }
 
     function setupForms() {
@@ -4831,15 +4848,11 @@ tbody tr:nth-child(even) td {
     $("#follower-edit-cancel").addEventListener("click", () => cancelRecordEdit("follower", true));
     $("#inquiry-edit-cancel").addEventListener("click", () => cancelRecordEdit("inquiry", true));
     $("#lstep-edit-cancel").addEventListener("click", () => cancelRecordEdit("lstep", true));
-    $("#add-work-row").addEventListener("click", () => addWorkMetricRow());
     $("#work-metric-body").addEventListener("click", event => {
       const saveButton = event.target.closest("[data-save-work-row]");
       if (saveButton) {
         saveWorkMetricRow(saveButton.closest("tr"));
-        return;
       }
-      const button = event.target.closest("[data-remove-work-row]");
-      if (button) removeWorkMetricRow(button);
     });
     ["workSnsFilter", "workMonthFilter", "workSort"].forEach(name => {
       $("#work-form").elements[name].addEventListener("change", () => renderWorkMetricRows());
@@ -4857,9 +4870,10 @@ tbody tr:nth-child(even) td {
       const source = workCandidateEntries({ sns: "", month: "", sort: "date-desc" }).find(item => item.workName === workName) || {};
       const payload = {
         date: form.elements.date.value || todayIso(),
+        postId: source.postId || row.dataset.workPostId || "",
         postDate: source.postDate || row.dataset.workPostDate || form.elements.date.value || todayIso(),
         sns: source.sns || row.dataset.workSns || "",
-        theme: source.theme || row.dataset.workTheme || "",
+        theme: row.querySelector("[name='workTheme']")?.value.trim() || "",
         workName,
         content: source.content || workName,
         impressions: Math.max(0, Number(row.querySelector("[name='workValue']")?.value || 0)),
@@ -4884,7 +4898,21 @@ tbody tr:nth-child(even) td {
         return;
       }
       const inputAt = new Date().toISOString();
-      const target = row.dataset.workId ? data.workMetrics.find(item => item.id === row.dataset.workId) : null;
+      const sourcePost = payload.postId
+        ? data.posts.find(item => item.id === payload.postId)
+        : data.posts.find(item => workMetricNameFromPost(item) === payload.workName);
+      if (sourcePost && (sourcePost.theme || "") !== payload.theme) {
+        const postBefore = cloneRecord(sourcePost);
+        sourcePost.theme = payload.theme;
+        sourcePost.updatedAt = inputAt;
+        addHistory("編集", "post", postBefore, sourcePost);
+      }
+      const target = row.dataset.workId
+        ? data.workMetrics.find(item => item.id === row.dataset.workId)
+        : [...data.workMetrics].reverse().find(item =>
+            item.date === payload.date &&
+            (payload.postId ? item.postId === payload.postId : (item.workName || item.content || "") === payload.workName)
+          );
       if (target) {
         const before = cloneRecord(target);
         Object.assign(target, payload, { updatedAt: inputAt });
