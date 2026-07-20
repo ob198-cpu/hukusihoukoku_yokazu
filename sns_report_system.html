@@ -1534,19 +1534,14 @@ tbody tr:nth-child(even) td {
 }
 
 .work-input-table-wrap {
-  max-height: min(58vh, 620px);
-  overflow: auto;
-  overscroll-behavior: contain;
-  scrollbar-gutter: stable;
+  overflow: visible;
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: #fff;
 }
 
 .work-input-table thead {
-  position: sticky;
-  top: 0;
-  z-index: 3;
+  display: none;
 }
 
 .work-input-table thead th {
@@ -1555,32 +1550,66 @@ tbody tr:nth-child(even) td {
 }
 
 .work-input-table {
+  display: block;
   width: 100%;
-  border-collapse: collapse;
-  min-width: 1600px;
-  table-layout: fixed;
+  min-width: 0;
+  border-collapse: separate;
 }
 
-.work-input-table th:nth-child(1),
-.work-input-table td:nth-child(1) { width: 105px; }
-.work-input-table th:nth-child(2),
-.work-input-table td:nth-child(2) { width: 86px; }
-.work-input-table th:nth-child(3),
-.work-input-table td:nth-child(3) { width: 170px; }
-.work-input-table th:nth-child(4),
-.work-input-table td:nth-child(4) { width: 430px; }
-.work-input-table th:nth-child(5),
-.work-input-table td:nth-child(5) { width: 132px; }
-.work-input-table th:nth-child(n+6):nth-child(-n+11),
-.work-input-table td:nth-child(n+6):nth-child(-n+11) { width: 96px; }
-.work-input-table th:nth-child(12),
-.work-input-table td:nth-child(12) { width: 92px; }
+.work-input-table tbody {
+  display: grid;
+  gap: 10px;
+  padding: 10px;
+}
+
+.work-input-table tr {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-areas:
+    "sns date theme content content content action"
+    "impressions likes comments shares saves profile link";
+  gap: 10px;
+  align-items: end;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow-sm);
+}
+
+.work-input-table td:nth-child(1) { grid-area: sns; }
+.work-input-table td:nth-child(2) { grid-area: date; }
+.work-input-table td:nth-child(3) { grid-area: theme; }
+.work-input-table td:nth-child(4) { grid-area: content; }
+.work-input-table td:nth-child(5) { grid-area: impressions; }
+.work-input-table td:nth-child(6) { grid-area: likes; }
+.work-input-table td:nth-child(7) { grid-area: comments; }
+.work-input-table td:nth-child(8) { grid-area: shares; }
+.work-input-table td:nth-child(9) { grid-area: saves; }
+.work-input-table td:nth-child(10) { grid-area: profile; }
+.work-input-table td:nth-child(11) { grid-area: link; }
+.work-input-table td:nth-child(12) { grid-area: action; }
 
 .work-input-table th,
 .work-input-table td {
-  padding: 10px;
-  border-bottom: 1px solid var(--border-color);
+  min-width: 0;
+  padding: 0;
+  border: 0;
   vertical-align: middle;
+}
+
+.work-input-table td {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.work-input-table td::before {
+  content: attr(data-label);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .work-input-table th {
@@ -1600,7 +1629,7 @@ tbody tr:nth-child(even) td {
 }
 
 .work-input-table input[type="number"] {
-  min-width: 76px;
+  min-width: 0;
   padding: 8px 10px;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -1617,8 +1646,49 @@ tbody tr:nth-child(even) td {
 }
 
 .work-theme-input {
-  min-width: 140px;
+  min-width: 0;
   padding: 8px 10px;
+}
+
+.work-table-toolbar {
+  display: flex;
+  margin: 4px 0 10px;
+}
+
+.work-row-actions {
+  display: flex;
+  flex-direction: row;
+  gap: 6px;
+}
+
+.work-row-actions .btn {
+  min-height: 40px;
+  flex: 1 1 0;
+}
+
+@media (max-width: 900px) {
+  .work-input-table tr {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-areas:
+      "sns date theme theme"
+      "content content content content"
+      "impressions likes comments shares"
+      "saves profile link action";
+  }
+}
+
+@media (max-width: 560px) {
+  .work-input-table tr {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "sns date"
+      "theme theme"
+      "content content"
+      "impressions likes"
+      "comments shares"
+      "saves profile"
+      "link action";
+  }
 }
 
 .record-list {
@@ -2292,6 +2362,9 @@ tbody tr:nth-child(even) td {
             <div class="work-filter-status" id="work-filter-count">-</div>
             <fieldset class="field-group">
               <legend>登録済み投稿の実績</legend>
+              <div class="work-table-toolbar">
+                <button class="btn small" type="button" id="add-work-row">新しい行を追加</button>
+              </div>
               <div class="work-input-table-wrap">
                 <table class="work-input-table">
                   <thead>
@@ -4414,27 +4487,56 @@ tbody tr:nth-child(even) td {
 
     function engagementInputsHtml(entry = {}) {
       return engagementFields.map(field => `
-        <td><input type="number" min="0" name="${field}" value="${Number(entry[field] || 0)}" aria-label="${escapeHtml(engagementLabels[field] || field)}"></td>
+        <td data-label="${escapeHtml(engagementLabels[field] || field)}"><input type="number" min="0" name="${field}" value="${Number(entry[field] || 0)}" aria-label="${escapeHtml(engagementLabels[field] || field)}"></td>
       `).join("");
     }
 
+    function workSnsOptions(selected = "") {
+      return ["", ...snsTypes, "その他"].map(value => {
+        const label = value || "選択してください";
+        return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+      }).join("");
+    }
+
     function workMetricRowHtml(entry = {}) {
+      const isNew = Boolean(entry.isNew);
       const workName = entry.workName || entry.content || "";
       const impressions = Number(entry.impressions || 0);
       const sns = entry.sns || "";
       const postDate = entry.postDate || entry.date || "";
-      const content = entry.content || workName || "投稿内容未入力";
+      const content = entry.content || workName || (isNew ? "" : "投稿内容未入力");
+      const snsCell = isNew
+        ? `<select name="workSns" aria-label="SNS">${workSnsOptions(sns)}</select>`
+        : escapeHtml(sns || "-");
+      const dateCell = isNew
+        ? `<input type="date" name="workPostDate" value="${escapeHtml(postDate || todayIso())}" aria-label="投稿日">`
+        : escapeHtml(dateLabel(postDate));
+      const contentCell = isNew
+        ? `<input type="text" name="workContent" value="${escapeHtml(content)}" placeholder="投稿内容を入力" aria-label="作品／投稿内容"><input type="hidden" name="workName" value="">`
+        : `<div class="work-content-cell" title="${escapeHtml(content)}">${escapeHtml(content)}</div><input type="hidden" name="workName" value="${escapeHtml(workName)}">`;
+      const cancelButton = isNew
+        ? '<button class="btn small" type="button" data-cancel-work-row>取消</button>'
+        : "";
       return `
-        <tr data-work-row data-work-id="${escapeHtml(entry.editId || "")}" data-work-post-id="${escapeHtml(entry.postId || "")}" data-work-sns="${escapeHtml(sns)}" data-work-post-date="${escapeHtml(postDate)}">
-          <td>${escapeHtml(sns || "-")}</td>
-          <td>${escapeHtml(dateLabel(postDate))}</td>
-          <td><input class="work-theme-input" type="text" name="workTheme" value="${escapeHtml(entry.theme || "")}" placeholder="テーマ未入力" aria-label="投稿テーマ"></td>
-          <td><div class="work-content-cell" title="${escapeHtml(content)}">${escapeHtml(content)}</div><input type="hidden" name="workName" value="${escapeHtml(workName)}"></td>
-          <td><input type="number" min="0" name="workValue" value="${impressions}" aria-label="インプレッション/再生数"></td>
+        <tr data-work-row data-work-new="${isNew ? "true" : "false"}" data-work-id="${escapeHtml(entry.editId || "")}" data-work-post-id="${escapeHtml(entry.postId || "")}" data-work-sns="${escapeHtml(sns)}" data-work-post-date="${escapeHtml(postDate)}">
+          <td data-label="SNS">${snsCell}</td>
+          <td data-label="投稿日">${dateCell}</td>
+          <td data-label="投稿テーマ"><input class="work-theme-input" type="text" name="workTheme" value="${escapeHtml(entry.theme || "")}" placeholder="テーマを入力" aria-label="投稿テーマ"></td>
+          <td data-label="作品／投稿内容">${contentCell}</td>
+          <td data-label="インプレッション／再生数"><input type="number" min="0" name="workValue" value="${impressions}" aria-label="インプレッション/再生数"></td>
           ${engagementInputsHtml(entry)}
-          <td><button class="btn primary small" type="button" data-save-work-row>保存</button></td>
+          <td data-label="操作"><div class="work-row-actions"><button class="btn primary small" type="button" data-save-work-row>保存</button>${cancelButton}</div></td>
         </tr>
       `;
+    }
+
+    function addWorkMetricRow() {
+      const body = $("#work-metric-body");
+      if (!body) return;
+      body.insertAdjacentHTML("afterbegin", workMetricRowHtml({ isNew: true, postDate: todayIso() }));
+      const firstRow = body.querySelector("tr");
+      firstRow?.querySelector("[name='workSns']")?.focus();
+      updateWorkFilterStatus(body.querySelectorAll("tr").length);
     }
 
     function renderWorkMetricRows(entries = null) {
@@ -4844,7 +4946,14 @@ tbody tr:nth-child(even) td {
     $("#follower-edit-cancel").addEventListener("click", () => cancelRecordEdit("follower", true));
     $("#inquiry-edit-cancel").addEventListener("click", () => cancelRecordEdit("inquiry", true));
     $("#lstep-edit-cancel").addEventListener("click", () => cancelRecordEdit("lstep", true));
+    $("#add-work-row").addEventListener("click", addWorkMetricRow);
     $("#work-metric-body").addEventListener("click", event => {
+      const cancelButton = event.target.closest("[data-cancel-work-row]");
+      if (cancelButton) {
+        cancelButton.closest("tr")?.remove();
+        updateWorkFilterStatus($("#work-metric-body").querySelectorAll("tr").length);
+        return;
+      }
       const saveButton = event.target.closest("[data-save-work-row]");
       if (saveButton) {
         saveWorkMetricRow(saveButton.closest("tr"));
@@ -4862,16 +4971,23 @@ tbody tr:nth-child(even) td {
     });
 
     function workMetricPayloadFromRow(row, form) {
-      const workName = row.querySelector("[name='workName']")?.value.trim() || "";
-      const source = workCandidateEntries({ sns: "", month: "", sort: "date-desc" }).find(item => item.workName === workName) || {};
+      const savedWorkName = row.querySelector("[name='workName']")?.value.trim() || "";
+      const source = workCandidateEntries({ sns: "", month: "", sort: "date-desc" }).find(item => item.workName === savedWorkName) || {};
+      const customPostDate = row.querySelector("[name='workPostDate']")?.value || "";
+      const customSns = row.querySelector("[name='workSns']")?.value || "";
+      const customContent = row.querySelector("[name='workContent']")?.value.trim() || "";
+      const postDate = source.postDate || customPostDate || row.dataset.workPostDate || form.elements.date.value || todayIso();
+      const sns = source.sns || customSns || row.dataset.workSns || "";
+      const content = source.content || customContent || savedWorkName;
+      const workName = savedWorkName || [dateLabel(postDate), sns, content].filter(Boolean).join(" ");
       const payload = {
         date: form.elements.date.value || todayIso(),
         postId: source.postId || row.dataset.workPostId || "",
-        postDate: source.postDate || row.dataset.workPostDate || form.elements.date.value || todayIso(),
-        sns: source.sns || row.dataset.workSns || "",
+        postDate,
+        sns,
         theme: row.querySelector("[name='workTheme']")?.value.trim() || "",
         workName,
-        content: source.content || workName,
+        content,
         impressions: Math.max(0, Number(row.querySelector("[name='workValue']")?.value || 0)),
         operator: form.elements.operator.value.trim()
       };
@@ -4884,8 +5000,14 @@ tbody tr:nth-child(even) td {
     function saveWorkMetricRow(row) {
       const form = $("#work-form");
       const payload = workMetricPayloadFromRow(row, form);
-      if (!payload.workName) {
-        alert("作品を選択してください。");
+      if (!payload.sns) {
+        alert("SNSを選択してください。");
+        row.querySelector("[name='workSns']")?.focus();
+        return;
+      }
+      if (!payload.content) {
+        alert("投稿内容を入力してください。");
+        row.querySelector("[name='workContent']")?.focus();
         return;
       }
       if (!payload.operator) {
