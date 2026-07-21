@@ -1645,9 +1645,16 @@ tbody tr:nth-child(even) td {
   -webkit-line-clamp: 2;
 }
 
-.work-theme-input {
-  min-width: 0;
+.work-theme-readonly {
+  display: flex;
+  min-height: 40px;
+  align-items: center;
   padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: #f8fafc;
+  color: var(--text-main);
+  overflow-wrap: anywhere;
 }
 
 .work-table-toolbar {
@@ -2021,6 +2028,24 @@ tbody tr:nth-child(even) td {
   border-radius: 6px;
 }
 
+body.modal-open {
+  overflow: hidden;
+}
+
+.record-edit-modal-window {
+  width: min(1180px, calc(100% - 32px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+#record-edit-modal-body .input-form-panel {
+  display: grid;
+  margin: 0;
+  border: 0;
+  padding: 0;
+  box-shadow: none;
+}
+
 .empty-state {
   padding: 32px;
   text-align: center;
@@ -2323,13 +2348,13 @@ tbody tr:nth-child(even) td {
               <label>プロフィールアクセス数<input type="number" name="profileAccesses" min="0" value="0"></label>
               <label>リンククリック数<input type="number" name="linkClicks" min="0" value="0"></label>
             </div>
+            <label>投稿内容<textarea name="content" required></textarea></label>
             <div class="video-metrics-panel" id="video-metrics" hidden>
-              <label>動画時間（秒）<input type="number" name="videoDuration" min="0" step="0.1" value="0"></label>
+              <label>再生時間（秒）<input type="number" name="videoDuration" min="0" step="0.1" value="0"></label>
               <label>総再生時間（分）<input type="number" name="totalWatchTime" min="0" step="0.1" value="0"></label>
               <label>平均視聴時間（秒）<input type="number" name="averageWatchTime" min="0" step="0.1" value="0"></label>
               <label>平均再生率（%）<input type="number" name="averageViewRate" min="0" max="100" step="0.1" value="0"></label>
             </div>
-            <label>投稿内容<textarea name="content" required></textarea></label>
             <label>備考<textarea name="note" placeholder="投稿後の修正、固定投稿、外部アカウントからのシェアなど"></textarea></label>
             <div class="grid-2">
               <label>入力者<input type="text" name="operator" required></label>
@@ -2628,6 +2653,16 @@ tbody tr:nth-child(even) td {
         <input type="hidden" id="modal-week-start">
       </div>
       <div id="inquiry-modal-body"></div>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="record-edit-modal" aria-hidden="true">
+    <div class="modal record-edit-modal-window" role="dialog" aria-modal="true" aria-labelledby="record-edit-modal-title">
+      <div class="modal-head">
+        <h2 id="record-edit-modal-title">入力済みデータを編集</h2>
+        <button class="btn" type="button" id="close-record-edit-modal">閉じる</button>
+      </div>
+      <div id="record-edit-modal-body"></div>
     </div>
   </div>
 
@@ -3084,6 +3119,7 @@ tbody tr:nth-child(even) td {
 
     let data = loadData();
     let recordAllMode = false;
+    let activeRecordEdit = null;
 
     function cloneRecord(record) {
       return JSON.parse(JSON.stringify(record || null));
@@ -3847,6 +3883,42 @@ tbody tr:nth-child(even) td {
       if (mode === "edit") renderRecords();
     }
 
+    function openRecordEditModal(type, form) {
+      if (!form) return;
+      if (activeRecordEdit) restoreRecordEditForm();
+      const placeholder = document.createComment(`record-edit-${type}`);
+      const wasActive = form.classList.contains("active");
+      form.parentNode.insertBefore(placeholder, form);
+      activeRecordEdit = { type, form, placeholder, wasActive };
+      form.classList.add("active");
+      $("#record-edit-modal-body").replaceChildren(form);
+      $("#record-edit-modal-title").textContent = `${recordTypeLabels[type] || "データ"}を編集`;
+      $("#record-edit-modal").classList.add("active");
+      $("#record-edit-modal").setAttribute("aria-hidden", "false");
+      document.body.classList.add("modal-open");
+      $("#record-edit-modal").querySelector("input:not([type='hidden']), select, textarea")?.focus();
+    }
+
+    function restoreRecordEditForm(type = "") {
+      if (!activeRecordEdit || (type && activeRecordEdit.type !== type)) return;
+      const { form, placeholder, wasActive } = activeRecordEdit;
+      if (placeholder.parentNode) placeholder.parentNode.insertBefore(form, placeholder);
+      placeholder.remove();
+      form.classList.toggle("active", wasActive);
+      activeRecordEdit = null;
+      $("#record-edit-modal").classList.remove("active");
+      $("#record-edit-modal").setAttribute("aria-hidden", "true");
+      $("#record-edit-modal-body").replaceChildren();
+      document.body.classList.remove("modal-open");
+    }
+
+    function closeRecordEditModal() {
+      const type = activeRecordEdit?.type;
+      if (!type) return;
+      cancelRecordEdit(type);
+      renderRecords();
+    }
+
     const editButtonLabels = {
       post: ["投稿を登録", "投稿を更新"],
       work: ["作品別推移を登録", "作品別推移を更新"],
@@ -3883,11 +3955,7 @@ tbody tr:nth-child(even) td {
       const form = $("#post-form");
       const fields = form.elements;
       clearOtherEditModes("post");
-      setInputMode("entry");
-      activatePostInputPanel();
       const editWeek = weekRangeFromStart(post.date || post.weekStart || $("#week-start").value || thisWeekRange().start);
-      setMainWeek(editWeek.start);
-      setRecordWeek(editWeek.start);
       fields.postId.value = post.id;
       fields.weekStart.value = editWeek.start;
       fields.weekEnd.value = editWeek.end;
@@ -3910,7 +3978,7 @@ tbody tr:nth-child(even) td {
       updateVideoMetricVisibility();
       updateFormWeekLabel(form);
       setPostFormMode("edit");
-      form.scrollIntoView({ behavior: "smooth", block: "start" });
+      openRecordEditModal("post", form);
     }
 
     function cancelPostEdit(showNotice = false) {
@@ -3920,6 +3988,7 @@ tbody tr:nth-child(even) td {
     function cancelRecordEdit(type, showNotice = false) {
       const form = $(`#${type}-form`);
       if (!form) return;
+      restoreRecordEditForm(type);
       form.reset();
       const idField = form.querySelector(`[name="${type}Id"]`);
       if (idField) idField.value = "";
@@ -3945,8 +4014,6 @@ tbody tr:nth-child(even) td {
       const form = $(`#${type}-form`);
       if (!form) return;
       clearOtherEditModes(type);
-      setInputMode("entry");
-      activateInputPanel(type);
       form.elements[`${type}Id`].value = item.id;
       if (type === "work") {
         form.elements.date.value = item.date || todayIso();
@@ -3969,8 +4036,6 @@ tbody tr:nth-child(even) td {
       }
       if (type === "inquiry") {
         const editWeek = weekRangeFromStart(item.date || item.weekStart || $("#week-start").value || thisWeekRange().start);
-        setMainWeek(editWeek.start);
-        setRecordWeek(editWeek.start);
         form.elements.weekStart.value = editWeek.start;
         form.elements.weekEnd.value = editWeek.end;
         form.elements.date.value = item.date || todayIso();
@@ -3983,8 +4048,6 @@ tbody tr:nth-child(even) td {
       }
       if (type === "lstep") {
         const editWeek = weekRangeFromStart(item.checkDate || item.weekStart || $("#week-start").value || thisWeekRange().start);
-        setMainWeek(editWeek.start);
-        setRecordWeek(editWeek.start);
         form.elements.weekStart.value = editWeek.start;
         form.elements.weekEnd.value = editWeek.end;
         form.elements.checkDate.value = item.checkDate || todayIso();
@@ -3994,7 +4057,7 @@ tbody tr:nth-child(even) td {
         updateFormWeekLabel(form);
       }
       setRecordFormMode(type, "edit");
-      form.scrollIntoView({ behavior: "smooth", block: "start" });
+      openRecordEditModal(type, form);
     }
 
     function recalculateLstepPreviousValues() {
@@ -4525,7 +4588,7 @@ tbody tr:nth-child(even) td {
         <tr data-work-row data-work-new="${isNew ? "true" : "false"}" data-work-id="${escapeHtml(entry.editId || "")}" data-work-post-id="${escapeHtml(entry.postId || "")}" data-work-sns="${escapeHtml(sns)}" data-work-post-date="${escapeHtml(postDate)}">
           <td data-label="SNS">${snsCell}</td>
           <td data-label="投稿日">${dateCell}</td>
-          <td data-label="投稿テーマ"><input class="work-theme-input" type="text" name="workTheme" value="${escapeHtml(entry.theme || "")}" placeholder="テーマを入力" aria-label="投稿テーマ"></td>
+          <td data-label="投稿テーマ"><span class="work-theme-readonly" title="投稿テーマは投稿入力・編集画面で変更します">${escapeHtml(entry.theme || "未設定")}</span><input type="hidden" name="workTheme" value="${escapeHtml(entry.theme || "")}"></td>
           <td data-label="作品／投稿内容">${contentCell}</td>
           <td data-label="インプレッション／再生数"><input type="number" min="0" name="workValue" value="${impressions}" aria-label="インプレッション/再生数"></td>
           ${engagementInputsHtml(entry)}
@@ -4635,14 +4698,16 @@ tbody tr:nth-child(even) td {
       if (!input?.value) return;
       const form = input.closest("form");
       if (!form?.querySelector("[name='weekStart']")) return;
-      recordAllMode = false;
       const { start, end } = weekRangeFromStart(input.value);
-      setMainWeek(start);
-      setRecordWeek(start);
       form.querySelector("[name='weekStart']").value = start;
       form.querySelector("[name='weekEnd']").value = end;
       updateFormWeekLabel(form);
-      renderAll();
+      if (!form.closest("#record-edit-modal")) {
+        recordAllMode = false;
+        setMainWeek(start);
+        setRecordWeek(start);
+        renderAll();
+      }
     }
     function updateFormWeekLabel(form) {
       const start = form?.querySelector("[name='weekStart']")?.value;
@@ -5003,6 +5068,7 @@ tbody tr:nth-child(even) td {
 
     function saveWorkMetricRow(row) {
       const form = $("#work-form");
+      const wasRecordEdit = Boolean(form.elements.workId.value);
       const payload = workMetricPayloadFromRow(row, form);
       if (!payload.sns) {
         alert("SNSを選択してください。");
@@ -5045,6 +5111,11 @@ tbody tr:nth-child(even) td {
         addHistory("登録", "work", null, created);
       }
       saveData(data);
+      if (wasRecordEdit) {
+        cancelRecordEdit("work");
+        renderAll();
+        return;
+      }
       renderAll();
       renderWorkMetricRows();
       activateInputPanel("work");
@@ -5246,6 +5317,13 @@ tbody tr:nth-child(even) td {
       setModalWeek($("#modal-week-select").value);
       renderInquiryDetail();
     });
+    $("#close-record-edit-modal").addEventListener("click", closeRecordEditModal);
+    $("#record-edit-modal").addEventListener("click", event => {
+      if (event.target.id === "record-edit-modal") closeRecordEditModal();
+    });
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && activeRecordEdit) closeRecordEditModal();
+    });
 
     $$(".tab").forEach(button => {
       button.addEventListener("click", () => {
@@ -5388,7 +5466,7 @@ tbody tr:nth-child(even) td {
       return {
         name: "投稿入力",
         rows: [
-          ["週開始日", "週終了日", "投稿日", "投稿時間", "SNS種別", "投稿形式", "投稿テーマ", "投稿URL", "投稿内容", "インプレッション/再生数", "いいね", "コメント/リプライ", "シェア/リポスト", "保存数", "プロフィールアクセス数", "リンククリック数", "動画時間（秒）", "総再生時間（分）", "平均視聴時間（秒）", "平均再生率（%）", "備考", "入力者", "入力時間"],
+          ["週開始日", "週終了日", "投稿日", "投稿時間", "SNS種別", "投稿形式", "投稿テーマ", "投稿URL", "投稿内容", "インプレッション/再生数", "いいね", "コメント/リプライ", "シェア/リポスト", "保存数", "プロフィールアクセス数", "リンククリック数", "再生時間（秒）", "総再生時間（分）", "平均視聴時間（秒）", "平均再生率（%）", "備考", "入力者", "入力時間"],
           ...sortedPostRows().map(p => [p.weekStart, p.weekEnd, p.date, p.postTime, p.sns, p.postType, p.theme, p.postUrl, p.content, p.impressions, p.likes, p.comments, p.shares, p.saves, p.profileAccesses, p.linkClicks, p.videoDuration, p.totalWatchTime, p.averageWatchTime, p.averageViewRate, p.note, p.operator, fullDateTime(p.inputAt)])
         ]
       };
