@@ -2023,6 +2023,60 @@ tbody tr:nth-child(even) td {
   box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
 }
 
+.work-view-tabs {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.work-view-tabs .summary-mode-btn {
+  min-width: 96px;
+}
+
+.work-name-list {
+  display: grid;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--card-bg);
+}
+
+.work-name-item {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  min-height: 58px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.work-name-item:last-child {
+  border-bottom: 0;
+}
+
+.work-name-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+
+.work-name-copy {
+  min-width: 0;
+}
+
+.work-name-copy strong,
+.work-name-copy small {
+  display: block;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.work-name-copy small {
+  margin-top: 2px;
+  color: var(--text-muted);
+}
+
 .follower-chart-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2921,6 +2975,12 @@ body.modal-open {
             <button class="summary-mode-btn" type="button" data-work-mode="week">週別</button>
             <button class="summary-mode-btn" type="button" data-work-mode="month">月別</button>
           </div>
+          <div class="summary-mode-tabs work-view-tabs" role="tablist" aria-label="作品別推移の表示内容">
+            <button class="summary-mode-btn active" type="button" role="tab" aria-selected="true" data-work-view="chart">グラフ</button>
+            <button class="summary-mode-btn" type="button" role="tab" aria-selected="false" data-work-view="list">逐語一覧</button>
+            <button class="summary-mode-btn" type="button" role="tab" aria-selected="false" data-work-view="table">集計表</button>
+            <button class="summary-mode-btn" type="button" role="tab" aria-selected="false" data-work-view="detail">入力明細</button>
+          </div>
           <p class="summary-limit-note">表示は最新12回分です。全期間のデータはExcel出力で確認します。</p>
           <div id="summary-work-metrics"></div>
         </div>
@@ -3006,6 +3066,7 @@ body.modal-open {
     let postSort = { key: "date", direction: "desc" };
     let summaryBreakdownMode = "week";
     let workBreakdownMode = "day";
+    let workDisplayMode = "chart";
     let followerTrendSns = "X";
     let followerTableMode = "week";
     let cloudSyncReady = false;
@@ -3879,7 +3940,7 @@ body.modal-open {
       return Array.from(latest.values());
     }
 
-    function workMetricTableHtml(rows, mode = workBreakdownMode) {
+    function workMetricSummaryData(rows, mode = workBreakdownMode) {
       const sourceRows = latestWorkMetricRowsByCheckpoint(rows);
       const periodMap = new Map();
       const latestRowByWork = new Map();
@@ -3902,6 +3963,11 @@ body.modal-open {
         const key = `${row.workName}__${period.key}`;
         valueMap.set(key, (Number(valueMap.get(key) || 0) + Number(row.impressions || 0)));
       });
+      return { sourceRows, periods, periodKeys, works, valueMap, latestRowByWork };
+    }
+
+    function workMetricTableHtml(rows, mode = workBreakdownMode) {
+      const { sourceRows, periods, periodKeys, works, valueMap, latestRowByWork } = workMetricSummaryData(rows, mode);
       if (!periods.length || !works.length) {
         return tableHtml(["作品名", "数値"], []);
       }
@@ -3918,7 +3984,7 @@ body.modal-open {
       });
       const totalRow = ["合計", ...periodKeys.map(key => works.reduce((sum, work) => sum + Number(valueMap.get(`${work}__${key}`) || 0), 0).toLocaleString())];
       totalRow.push(sourceRows.reduce((sum, row) => sum + Number(row.impressions || 0), 0).toLocaleString());
-      return workMetricChartHtml(periods, works, valueMap) + `<div class="work-summary-table"><table>
+      return `<div class="work-summary-table"><table>
         <thead><tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
         <tbody>
           ${bodyRows.join("")}
@@ -3927,15 +3993,40 @@ body.modal-open {
       </table></div>`;
     }
 
+    function workMetricChartForRowsHtml(rows, mode = workBreakdownMode) {
+      const { periods, works, valueMap } = workMetricSummaryData(rows, mode);
+      if (!periods.length || !works.length) {
+        return tableHtml(["作品名", "数値"], []);
+      }
+      return workMetricChartHtml(periods, works, valueMap);
+    }
+
+    function workMetricWorksListHtml(rows, mode = workBreakdownMode) {
+      const { works, latestRowByWork } = workMetricSummaryData(rows, mode);
+      if (!works.length) {
+        return tableHtml(["作品名", "最新情報"], []);
+      }
+      return `<div class="work-name-list">
+        ${works.map((work, index) => {
+          const latest = latestRowByWork.get(work)?.row;
+          const meta = latest
+            ? `${latest.sns || "SNS未設定"} / 投稿日 ${dateLabel(latest.postDate || latest.date)} / 最新 ${Number(latest.impressions || 0).toLocaleString()}`
+            : "最新情報なし";
+          return `<div class="work-name-item">
+            <i class="work-name-color" style="background:${workColor(index)}" aria-hidden="true"></i>
+            <div class="work-name-copy"><strong>${escapeHtml(work)}</strong><small>${escapeHtml(meta)}</small></div>
+            ${latest?.id ? `<button class="btn small" type="button" data-edit-record="work" data-record-id="${escapeHtml(latest.id)}">編集</button>` : ""}
+          </div>`;
+        }).join("")}
+      </div>`;
+    }
+
     function workMetricChartHtml(periods, works, valueMap) {
       const periodKeys = periods.map(([key]) => key);
       const totals = periodKeys.map(key => works.reduce((sum, work) => sum + Number(valueMap.get(`${work}__${key}`) || 0), 0));
       const max = Math.max(...totals, 1);
       return `
         <div class="work-chart">
-          <div class="follower-chart-legend">
-            ${works.map((work, index) => `<span><i style="background:${workColor(index)}"></i>${escapeHtml(work)}</span>`).join("")}
-          </div>
           <div class="work-chart-bars">
             ${periods.map(([key, label], index) => {
               const total = totals[index] || 0;
@@ -4580,9 +4671,20 @@ body.modal-open {
       $$("[data-work-mode]").forEach(button => {
         button.classList.toggle("active", button.dataset.workMode === workBreakdownMode);
       });
+      $$("[data-work-view]").forEach(button => {
+        const selected = button.dataset.workView === workDisplayMode;
+        button.classList.toggle("active", selected);
+        button.setAttribute("aria-selected", String(selected));
+      });
       const rows = data.workMetrics.filter(item => isInSummaryRange(item.date));
       $("#summary-work-count").textContent = `${rows.length}件`;
-      $("#summary-work-metrics").innerHTML = workMetricTableHtml(rows, workBreakdownMode) + workMetricDetailHtml(rows);
+      const viewHtml = {
+        chart: () => workMetricChartForRowsHtml(rows, workBreakdownMode),
+        list: () => workMetricWorksListHtml(rows, workBreakdownMode),
+        table: () => workMetricTableHtml(rows, workBreakdownMode),
+        detail: () => workMetricDetailHtml(rows)
+      };
+      $("#summary-work-metrics").innerHTML = (viewHtml[workDisplayMode] || viewHtml.chart)();
     }
 
     function renderFollowerSummary(selectedBusiness) {
@@ -5691,6 +5793,12 @@ body.modal-open {
     $$("[data-work-mode]").forEach(button => {
       button.addEventListener("click", () => {
         workBreakdownMode = button.dataset.workMode;
+        renderSummaryWorkMetrics();
+      });
+    });
+    $$("[data-work-view]").forEach(button => {
+      button.addEventListener("click", () => {
+        workDisplayMode = button.dataset.workView;
         renderSummaryWorkMetrics();
       });
     });
