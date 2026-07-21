@@ -1624,8 +1624,15 @@ tbody tr:nth-child(even) td {
 }
 
 .work-input-table select,
-.work-input-table input {
+.work-input-table input,
+.work-input-table textarea {
   width: 100%;
+}
+
+.work-input-table textarea.work-content-input {
+  min-height: 64px;
+  padding: 8px 10px;
+  resize: vertical;
 }
 
 .work-input-table input[type="number"] {
@@ -4758,6 +4765,7 @@ body.modal-open {
 
     function workMetricRowHtml(entry = {}) {
       const isNew = Boolean(entry.isNew);
+      const isRecordEdit = Boolean(entry.editId);
       const workName = entry.workName || entry.content || "";
       const impressions = Number(entry.impressions || 0);
       const sns = entry.sns || "";
@@ -4769,9 +4777,12 @@ body.modal-open {
       const dateCell = isNew
         ? `<input type="date" name="workPostDate" value="${escapeHtml(postDate || todayIso())}" aria-label="投稿日">`
         : escapeHtml(dateLabel(postDate));
-      const contentCell = isNew
-        ? `<input type="text" name="workContent" value="${escapeHtml(content)}" placeholder="投稿内容を入力" aria-label="作品／投稿内容"><input type="hidden" name="workName" value="">`
+      const contentCell = isNew || isRecordEdit
+        ? `<textarea class="work-content-input" name="workContent" placeholder="投稿内容を入力" aria-label="作品／投稿内容">${escapeHtml(content)}</textarea><input type="hidden" name="workName" value="${isRecordEdit ? escapeHtml(workName) : ""}">`
         : `<div class="work-content-cell" title="${escapeHtml(content)}">${escapeHtml(content)}</div><input type="hidden" name="workName" value="${escapeHtml(workName)}">`;
+      const themeCell = isRecordEdit
+        ? `<input type="text" name="workTheme" value="${escapeHtml(entry.theme || "")}" placeholder="投稿テーマを入力" aria-label="投稿テーマ">`
+        : `<span class="work-theme-readonly" title="投稿テーマは編集画面で変更します">${escapeHtml(entry.theme || "未設定")}</span><input type="hidden" name="workTheme" value="${escapeHtml(entry.theme || "")}">`;
       const cancelButton = isNew
         ? '<button class="btn small" type="button" data-cancel-work-row>取消</button>'
         : "";
@@ -4779,7 +4790,7 @@ body.modal-open {
         <tr data-work-row data-work-new="${isNew ? "true" : "false"}" data-work-id="${escapeHtml(entry.editId || "")}" data-work-post-id="${escapeHtml(entry.postId || "")}" data-work-sns="${escapeHtml(sns)}" data-work-post-date="${escapeHtml(postDate)}">
           <td data-label="SNS">${snsCell}</td>
           <td data-label="投稿日">${dateCell}</td>
-          <td data-label="投稿テーマ"><span class="work-theme-readonly" title="投稿テーマは投稿入力・編集画面で変更します">${escapeHtml(entry.theme || "未設定")}</span><input type="hidden" name="workTheme" value="${escapeHtml(entry.theme || "")}"></td>
+          <td data-label="投稿テーマ">${themeCell}</td>
           <td data-label="作品／投稿内容">${contentCell}</td>
           <td data-label="インプレッション／再生数"><input type="number" min="0" name="workValue" value="${impressions}" aria-label="インプレッション/再生数"></td>
           ${engagementInputsHtml(entry)}
@@ -5238,7 +5249,7 @@ body.modal-open {
       const customContent = row.querySelector("[name='workContent']")?.value.trim() || "";
       const postDate = source.postDate || customPostDate || row.dataset.workPostDate || form.elements.date.value || todayIso();
       const sns = source.sns || customSns || row.dataset.workSns || "";
-      const content = source.content || customContent || savedWorkName;
+      const content = customContent || source.content || savedWorkName;
       const workName = savedWorkName || [dateLabel(postDate), sns, content].filter(Boolean).join(" ");
       const payload = {
         date: form.elements.date.value || todayIso(),
@@ -5277,21 +5288,40 @@ body.modal-open {
         return;
       }
       const inputAt = new Date().toISOString();
-      const sourcePost = payload.postId
-        ? data.posts.find(item => item.id === payload.postId)
-        : data.posts.find(item => workMetricNameFromPost(item) === payload.workName);
-      if (sourcePost && (sourcePost.theme || "") !== payload.theme) {
-        const postBefore = cloneRecord(sourcePost);
-        sourcePost.theme = payload.theme;
-        sourcePost.updatedAt = inputAt;
-        addHistory("編集", "post", postBefore, sourcePost);
-      }
       const target = row.dataset.workId
         ? data.workMetrics.find(item => item.id === row.dataset.workId)
         : [...data.workMetrics].reverse().find(item =>
             item.date === payload.date &&
             (payload.postId ? item.postId === payload.postId : (item.workName || item.content || "") === payload.workName)
           );
+      const sourcePost = payload.postId
+        ? data.posts.find(item => item.id === payload.postId)
+        : data.posts.find(item => workMetricNameFromPost(item) === payload.workName);
+      const metadataEdit = Boolean(row.dataset.workId);
+      const oldWorkName = payload.workName;
+      let relatedMetrics = [];
+      if (metadataEdit && sourcePost && ((sourcePost.theme || "") !== payload.theme || (sourcePost.content || "") !== payload.content)) {
+        const postBefore = cloneRecord(sourcePost);
+        sourcePost.theme = payload.theme;
+        sourcePost.content = payload.content;
+        sourcePost.updatedAt = inputAt;
+        addHistory("編集", "post", postBefore, sourcePost);
+        payload.workName = workMetricNameFromPost(sourcePost);
+        relatedMetrics = data.workMetrics.filter(item => item.id !== target?.id && item.postId === sourcePost.id);
+      } else if (metadataEdit && !sourcePost && target && ((target.theme || "") !== payload.theme || (target.content || "") !== payload.content)) {
+        payload.workName = [dateLabel(payload.postDate), payload.sns, payload.content].filter(Boolean).join(" ");
+        relatedMetrics = data.workMetrics.filter(item => item.id !== target.id && (item.workName || item.content || "") === oldWorkName);
+      }
+      relatedMetrics.forEach(item => {
+        const before = cloneRecord(item);
+        Object.assign(item, {
+          theme: payload.theme,
+          content: payload.content,
+          workName: payload.workName,
+          updatedAt: inputAt
+        });
+        addHistory("編集", "work", before, item);
+      });
       if (target) {
         const before = cloneRecord(target);
         Object.assign(target, payload, { updatedAt: inputAt });
