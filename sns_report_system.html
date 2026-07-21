@@ -1719,6 +1719,110 @@ tbody tr:nth-child(even) td {
   border-radius: 6px;
 }
 
+.post-record-table {
+  table-layout: fixed;
+}
+
+.post-record-table th,
+.post-record-table td {
+  padding: 10px;
+  word-break: keep-all;
+}
+
+.post-record-table th {
+  white-space: nowrap;
+}
+
+.post-record-table td {
+  vertical-align: top;
+}
+
+.post-record-date,
+.post-record-meta,
+.post-record-owner,
+.post-record-performance {
+  display: grid;
+  gap: 4px;
+}
+
+.post-record-date span,
+.post-record-meta span,
+.post-record-owner small,
+.post-record-performance small {
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.post-record-meta strong,
+.post-record-owner strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.post-record-content {
+  display: -webkit-box;
+  overflow: hidden;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
+.post-record-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.post-record-links a,
+.post-record-links span {
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  padding: 2px 6px;
+  color: var(--primary);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.post-record-performance strong {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+
+.post-record-reactions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px 10px;
+}
+
+.post-record-reactions span {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.post-record-reactions strong {
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+}
+
+.post-record-table .record-actions {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.post-record-table .record-actions .btn {
+  width: 100%;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;
@@ -3821,54 +3925,42 @@ body.modal-open {
     }
 
     function postTableHtml(posts) {
-      const columns = [
-        ["date", "投稿日"],
-        ["postTime", "投稿時間"],
-        ["sns", "SNS"],
-        ["postType", "投稿形式"],
-        ["theme", "投稿テーマ"],
-        ["content", "内容"],
-        ["postUrl", "投稿URL"],
-        ["impressions", "Imp/再生"],
-        ["likes", "いいね"],
-        ["comments", "コメント"],
-        ["shares", "シェア"],
-        ["saves", "保存"],
-        ["profileAccesses", "プロフィール"],
-        ["linkClicks", "リンク"],
-        ["operator", "入力者"],
-        ["inputAt", "入力時間"]
-      ];
-      return `<table><thead><tr>${columns.map(([key, label]) => `
-        <th class="sortable ${postSort.key === key ? `sorted-${postSort.direction}` : ""}" data-post-sort="${key}">${label}</th>
-      `).join("")}<th>動画指標</th><th>備考</th><th>操作</th></tr></thead><tbody>
+      const sortableHeader = (key, label) => `<th class="sortable ${postSort.key === key ? `sorted-${postSort.direction}` : ""}" data-post-sort="${key}">${label}</th>`;
+      return `<table class="post-record-table">
+        <colgroup><col style="width:8%"><col style="width:7%"><col style="width:14%"><col style="width:28%"><col style="width:10%"><col style="width:16%"><col style="width:10%"><col style="width:7%"></colgroup>
+        <thead><tr>
+          ${sortableHeader("date", "投稿日")}
+          ${sortableHeader("sns", "SNS")}
+          ${sortableHeader("theme", "形式・テーマ")}
+          ${sortableHeader("content", "投稿内容")}
+          ${sortableHeader("impressions", "Imp／再生")}
+          ${sortableHeader("likes", "反応")}
+          ${sortableHeader("inputAt", "入力情報")}
+          <th>操作</th>
+        </tr></thead><tbody>
         ${posts.map(p => {
           const url = safeHttpUrl(p.postUrl);
           const videoSummary = videoPostTypes.has(p.postType)
             ? `${Number(p.videoDuration || 0).toLocaleString()}秒 / 総${Number(p.totalWatchTime || 0).toLocaleString()}分 / 平均${Number(p.averageWatchTime || 0).toLocaleString()}秒 / ${Number(p.averageViewRate || 0).toLocaleString()}%`
-            : "-";
+            : "";
           return `<tr>
-          <td>${dateLabel(p.date)}</td>
-          <td>${escapeHtml(p.postTime || "-")}</td>
-          <td>${escapeHtml(p.sns)}</td>
-          <td>${escapeHtml(p.postType || "")}</td>
-          <td>${escapeHtml(p.theme || "-")}</td>
-          <td>${escapeHtml(p.content)}</td>
-          <td>${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">開く</a>` : "-"}</td>
-          <td>${Number(p.impressions || 0).toLocaleString()}</td>
-          <td>${Number(p.likes || 0).toLocaleString()}</td>
-          <td>${Number(p.comments || 0).toLocaleString()}</td>
-          <td>${Number(p.shares || 0).toLocaleString()}</td>
-          <td>${Number(p.saves || 0).toLocaleString()}</td>
-          <td>${Number(p.profileAccesses || 0).toLocaleString()}</td>
-          <td>${Number(p.linkClicks || 0).toLocaleString()}</td>
-          <td>${escapeHtml(p.operator)}</td>
-          <td>${escapeHtml(fullDateTime(p.inputAt))}</td>
-          <td>${escapeHtml(videoSummary)}</td>
-          <td>${escapeHtml(p.note || "-")}</td>
+          <td><div class="post-record-date"><strong>${dateLabel(p.date)}</strong><span>${escapeHtml(p.postTime || "時間未入力")}</span></div></td>
+          <td><span class="pill">${escapeHtml(p.sns || "-")}</span></td>
+          <td><div class="post-record-meta"><span>${escapeHtml(p.postType || "形式未設定")}</span><strong title="${escapeHtml(p.theme || "")}">${escapeHtml(p.theme || "テーマ未設定")}</strong></div></td>
+          <td><div class="post-record-content" title="${escapeHtml(p.content || "")}">${escapeHtml(p.content || "-")}</div><div class="post-record-links">${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">投稿を開く</a>` : ""}${p.note ? `<span title="${escapeHtml(p.note)}">備考あり</span>` : ""}</div></td>
+          <td><div class="post-record-performance"><strong>${Number(p.impressions || 0).toLocaleString()}</strong>${videoSummary ? `<small title="${escapeHtml(videoSummary)}">動画指標あり</small>` : ""}</div></td>
+          <td><div class="post-record-reactions">
+            <span>いいね<strong>${Number(p.likes || 0).toLocaleString()}</strong></span>
+            <span>コメント<strong>${Number(p.comments || 0).toLocaleString()}</strong></span>
+            <span>シェア<strong>${Number(p.shares || 0).toLocaleString()}</strong></span>
+            <span>保存<strong>${Number(p.saves || 0).toLocaleString()}</strong></span>
+            <span>プロフ<strong>${Number(p.profileAccesses || 0).toLocaleString()}</strong></span>
+            <span>リンク<strong>${Number(p.linkClicks || 0).toLocaleString()}</strong></span>
+          </div></td>
+          <td><div class="post-record-owner"><strong>${escapeHtml(p.operator || "-")}</strong><small>${escapeHtml(fullDateTime(p.inputAt))}</small></div></td>
           <td>${recordActionButtons("post", p.id)}</td>
         </tr>`;
-        }).join("") || `<tr><td colspan="19">データはありません。</td></tr>`}
+        }).join("") || `<tr><td colspan="8">データはありません。</td></tr>`}
       </tbody></table>`;
     }
 
