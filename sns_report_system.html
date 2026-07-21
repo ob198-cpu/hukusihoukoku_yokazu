@@ -1719,6 +1719,37 @@ tbody tr:nth-child(even) td {
   border-radius: 6px;
 }
 
+.record-list.work-summary-only {
+  min-height: 0;
+}
+
+.record-list.work-summary-only .record-manager-head,
+.record-list.work-summary-only .record-manager-note,
+.record-list.work-summary-only .record-week-controls,
+.record-list.work-summary-only .record-search-row,
+.record-list.work-summary-only .record-tool-note,
+.record-list.work-summary-only .record-maintenance {
+  display: none;
+}
+
+.record-summary-redirect {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 4px;
+}
+
+.record-summary-redirect h3,
+.record-summary-redirect p {
+  margin: 0;
+}
+
+.record-summary-redirect p {
+  margin-top: 4px;
+  color: var(--text-muted);
+}
+
 .post-record-table {
   table-layout: fixed;
 }
@@ -2752,7 +2783,6 @@ body.modal-open {
             <span>バックアップ保存・復元・操作履歴もこの一覧上部から操作できます。</span>
             <div class="record-target-list" aria-label="編集削除対象">
               <span>投稿</span>
-              <span>作品別推移（集計で表示）</span>
               <span>フォロワー管理</span>
               <span>問い合わせ入力</span>
               <span>Lステップ管理</span>
@@ -3792,7 +3822,6 @@ body.modal-open {
       const sortedPosts = sortedPostRows();
       const { start, end } = recordWeekDefaults();
       const query = recordSearchQuery();
-      const workRows = data.workMetrics.filter(item => recordInScope(item, "work", start, end) && recordMatches(item, "work", query));
       const followerRows = data.followers.filter(item => recordInScope(item, "follower", start, end) && recordMatches(item, "follower", query));
       const weeklyInquiries = data.inquiries.filter(item => recordInScope(item, "inquiry", start, end) && recordMatches(item, "inquiry", query));
       const weeklyLsteps = data.lsteps.filter(item => recordInScope(item, "lstep", start, end) && recordMatches(item, "lstep", query));
@@ -3800,11 +3829,12 @@ body.modal-open {
       const tables = {
         all: allRecordsHtml(),
         post: `<h3>投稿 ${recordCountLabel(sortedPosts.length)}</h3>${postTableHtml(visiblePosts)}`,
-        work: `<h3>作品別推移 ${recordCountLabel(workRows.length)}</h3>${workRecordsHtml(workRows)}`,
+        work: `<div class="record-summary-redirect"><div><h3>作品別推移</h3><p>作品別推移の確認・編集は集計シートにまとめています。</p></div><button class="btn primary" type="button" id="open-work-summary">集計の作品別推移を開く</button></div>`,
         follower: `<h3>フォロワー ${recordCountLabel(followerRows.length)}</h3>${followerRecordsHtml(followerRows)}`,
         inquiry: `<h3>問い合わせ ${recordCountLabel(weeklyInquiries.length)}</h3>${inquiryRecordsHtml(weeklyInquiries)}`,
         lstep: `<h3>Lステップ ${recordCountLabel(weeklyLsteps.length)}</h3>${lstepRecordsHtml(weeklyLsteps)}`
       };
+      document.querySelector('[data-input-mode-panel="edit"]')?.classList.toggle("work-summary-only", active === "work");
       $("#record-tables").innerHTML = tables[active] || tables.all;
       const allPeriodButton = $("#clear-record-filters");
       if (allPeriodButton) {
@@ -3817,6 +3847,7 @@ body.modal-open {
       if (active === "post") {
         bindPostSortHeaders();
       }
+      $("#open-work-summary")?.addEventListener("click", showSummaryWorks);
       renderHistory();
     }
 
@@ -3995,7 +4026,6 @@ body.modal-open {
       const { start, end } = recordWeekDefaults();
       const collections = [
         ["post", data.posts],
-        ["work", data.workMetrics],
         ["follower", data.followers],
         ["inquiry", data.inquiries],
         ["lstep", data.lsteps]
@@ -5069,6 +5099,14 @@ body.modal-open {
       setSummaryTab("breakdown");
       renderSummary();
       $("#summary-date-body").closest(".summary-breakdown-table").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    function showSummaryWorks() {
+      $$(".tab").forEach(tab => tab.classList.toggle("active", tab.dataset.view === "summary"));
+      $$(".view").forEach(view => view.classList.toggle("active", view.id === "view-summary"));
+      setSummaryTab("works");
+      renderSummary();
+      $("#summary-work-metrics")?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
 
     function setSummaryTab(name) {
