@@ -2469,18 +2469,19 @@ body.modal-open {
       </div>
 
       <div class="input-layout">
+        <div class="input-tabs" aria-label="入力カテゴリ切替">
+          <button class="input-tab active" type="button" data-input-tab="post">投稿入力</button>
+          <button class="input-tab" type="button" data-input-tab="work">作品別推移</button>
+          <button class="input-tab" type="button" data-input-tab="follower">フォロワー管理</button>
+          <button class="input-tab" type="button" data-input-tab="inquiry">問い合わせ入力</button>
+          <button class="input-tab" type="button" data-input-tab="lstep">Lステップ管理</button>
+        </div>
+        <div class="input-tabs input-mode-tabs" aria-label="選択中カテゴリの画面切替">
+          <button class="input-tab active" type="button" data-input-mode-tab="entry">入力画面</button>
+          <button class="input-tab" type="button" data-input-mode-tab="edit">編集画面</button>
+        </div>
+
         <div class="input-mode-panel active" data-input-mode-panel="entry">
-          <div class="input-tabs">
-            <button class="input-tab active" type="button" data-input-tab="post">投稿入力</button>
-            <button class="input-tab" type="button" data-input-tab="work">作品別推移</button>
-            <button class="input-tab" type="button" data-input-tab="follower">フォロワー管理</button>
-            <button class="input-tab" type="button" data-input-tab="inquiry">問い合わせ入力</button>
-            <button class="input-tab" type="button" data-input-tab="lstep">Lステップ管理</button>
-          </div>
-          <div class="input-tabs input-mode-tabs" aria-label="選択中カテゴリの画面切替">
-            <button class="input-tab active" type="button" data-input-mode-tab="entry">入力画面</button>
-            <button class="input-tab" type="button" data-input-mode-tab="edit">編集画面</button>
-          </div>
           <form class="panel stack input-form-panel active" id="post-form" data-input-panel="post">
             <h3>投稿入力</h3>
             <input type="hidden" name="postId">
@@ -2652,18 +2653,6 @@ body.modal-open {
               <span>問い合わせ入力</span>
               <span>Lステップ管理</span>
             </div>
-          </div>
-          <div class="input-tabs">
-            <button class="input-tab active" type="button" data-record-tab="all">全データ</button>
-            <button class="input-tab" type="button" data-record-tab="post">投稿入力</button>
-            <button class="input-tab" type="button" data-record-tab="work">作品別推移</button>
-            <button class="input-tab" type="button" data-record-tab="follower">フォロワー管理</button>
-            <button class="input-tab" type="button" data-record-tab="inquiry">問い合わせ入力</button>
-            <button class="input-tab" type="button" data-record-tab="lstep">Lステップ管理</button>
-          </div>
-          <div class="input-tabs input-mode-tabs" aria-label="選択中カテゴリの画面切替">
-            <button class="input-tab" type="button" data-input-mode-tab="entry">入力画面</button>
-            <button class="input-tab active" type="button" data-input-mode-tab="edit">編集画面</button>
           </div>
           <div class="record-week-controls">
             <button class="btn" type="button" id="record-prev-week">前週</button>
@@ -3695,7 +3684,7 @@ body.modal-open {
     }
 
     function renderRecords() {
-      const active = document.querySelector("[data-record-tab].active")?.dataset.recordTab || "all";
+      const active = document.querySelector("[data-input-tab].active")?.dataset.inputTab || "post";
       const sortedPosts = sortedPostRows();
       const { start, end } = recordWeekDefaults();
       const query = recordSearchQuery();
@@ -4059,13 +4048,7 @@ body.modal-open {
     }
 
     function setInputMode(mode) {
-      if (mode === "entry") {
-        const recordType = document.querySelector('[data-input-mode-panel="edit"] [data-record-tab].active')?.dataset.recordTab;
-        activateInputPanel(recordType && recordType !== "all" ? recordType : "post");
-      } else {
-        const inputType = document.querySelector('[data-input-mode-panel="entry"] [data-input-tab].active')?.dataset.inputTab || "post";
-        const recordTab = document.querySelector(`[data-record-tab="${inputType}"]`) || document.querySelector('[data-record-tab="all"]');
-        $$('[data-record-tab]').forEach(tab => tab.classList.toggle('active', tab === recordTab));
+      if (mode === "edit") {
         recordAllMode = true;
         $("#record-week-start").value = "";
         $("#record-week-end").value = "";
@@ -5609,18 +5592,10 @@ body.modal-open {
 
     $$("[data-input-tab]").forEach(button => {
       button.addEventListener("click", () => {
-        $$("[data-input-tab]").forEach(tab => tab.classList.remove("active"));
-        $$("[data-input-panel]").forEach(panel => panel.classList.remove("active"));
-        button.classList.add("active");
-        $(`[data-input-panel="${button.dataset.inputTab}"]`).classList.add("active");
-      });
-    });
-
-    $$("[data-record-tab]").forEach(button => {
-      button.addEventListener("click", () => {
-        $$("[data-record-tab]").forEach(tab => tab.classList.remove("active"));
-        button.classList.add("active");
-        renderRecords();
+        activateInputPanel(button.dataset.inputTab);
+        if (document.querySelector('[data-input-mode-panel="edit"]')?.classList.contains("active")) {
+          renderRecords();
+        }
       });
     });
     $("#clear-record-filters").addEventListener("click", showAllRecords);
@@ -5658,7 +5633,7 @@ body.modal-open {
       });
     }
     $("#export-excel").addEventListener("click", () => {
-      const active = document.querySelector("[data-record-tab].active")?.dataset.recordTab || "all";
+      const active = document.querySelector("[data-input-tab].active")?.dataset.inputTab || "post";
       const sheets = active === "all"
         ? ["post", "work", "follower", "inquiry", "lstep"].map(excelSheetFor)
         : [excelSheetFor(active)];
