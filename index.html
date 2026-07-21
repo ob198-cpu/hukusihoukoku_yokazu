@@ -2461,11 +2461,6 @@ body.modal-open {
         <div class="week-range-card"><span>選択中の週</span><strong id="input-week-range-label">-</strong></div>
       </div>
 
-      <div class="input-tabs input-mode-tabs" aria-label="入力シート画面切替">
-        <button class="input-tab active" type="button" data-input-mode-tab="entry">入力画面</button>
-        <button class="input-tab" type="button" data-input-mode-tab="edit">編集画面</button>
-      </div>
-
       <div class="input-layout">
         <div class="input-mode-panel active" data-input-mode-panel="entry">
           <div class="input-tabs">
@@ -2474,6 +2469,10 @@ body.modal-open {
             <button class="input-tab" type="button" data-input-tab="follower">フォロワー管理</button>
             <button class="input-tab" type="button" data-input-tab="inquiry">問い合わせ入力</button>
             <button class="input-tab" type="button" data-input-tab="lstep">Lステップ管理</button>
+          </div>
+          <div class="input-tabs input-mode-tabs" aria-label="選択中カテゴリの画面切替">
+            <button class="input-tab active" type="button" data-input-mode-tab="entry">入力画面</button>
+            <button class="input-tab" type="button" data-input-mode-tab="edit">編集画面</button>
           </div>
           <form class="panel stack input-form-panel active" id="post-form" data-input-panel="post">
             <h3>投稿入力</h3>
@@ -2650,9 +2649,14 @@ body.modal-open {
           <div class="input-tabs">
             <button class="input-tab active" type="button" data-record-tab="all">全データ</button>
             <button class="input-tab" type="button" data-record-tab="post">投稿入力</button>
+            <button class="input-tab" type="button" data-record-tab="work">作品別推移</button>
             <button class="input-tab" type="button" data-record-tab="follower">フォロワー管理</button>
             <button class="input-tab" type="button" data-record-tab="inquiry">問い合わせ入力</button>
             <button class="input-tab" type="button" data-record-tab="lstep">Lステップ管理</button>
+          </div>
+          <div class="input-tabs input-mode-tabs" aria-label="選択中カテゴリの画面切替">
+            <button class="input-tab" type="button" data-input-mode-tab="entry">入力画面</button>
+            <button class="input-tab active" type="button" data-input-mode-tab="edit">編集画面</button>
           </div>
           <div class="record-week-controls">
             <button class="btn" type="button" id="record-prev-week">前週</button>
@@ -4047,6 +4051,14 @@ body.modal-open {
     }
 
     function setInputMode(mode) {
+      if (mode === "entry") {
+        const recordType = document.querySelector('[data-input-mode-panel="edit"] [data-record-tab].active')?.dataset.recordTab;
+        activateInputPanel(recordType && recordType !== "all" ? recordType : "post");
+      } else {
+        const inputType = document.querySelector('[data-input-mode-panel="entry"] [data-input-tab].active')?.dataset.inputTab || "post";
+        const recordTab = document.querySelector(`[data-record-tab="${inputType}"]`) || document.querySelector('[data-record-tab="all"]');
+        $$('[data-record-tab]').forEach(tab => tab.classList.toggle('active', tab === recordTab));
+      }
       $$('[data-input-mode-tab]').forEach(tab => tab.classList.toggle('active', tab.dataset.inputModeTab === mode));
       $$('[data-input-mode-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.inputModePanel === mode));
       if (mode === "edit") renderRecords();
