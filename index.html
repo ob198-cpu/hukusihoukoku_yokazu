@@ -1186,6 +1186,13 @@ tbody tr:nth-child(even) td {
   display: block;
 }
 
+#clear-record-filters[aria-pressed="true"] {
+  border-color: var(--primary);
+  background: #eef2ff;
+  color: var(--primary);
+  font-weight: 800;
+}
+
 .input-tabs {
   display: flex;
   gap: 6px;
@@ -2636,7 +2643,7 @@ body.modal-open {
             <button class="btn primary" type="button" id="export-excel">表示中データをExcel出力</button>
           </div>
           <div class="record-manager-note">
-            <strong>使い方: 「全て表示」または検索で古いデータを探し、対象行の「編集」「削除」を押してください。</strong>
+            <strong>各カテゴリには全期間のデータを表示します。対象行の「編集」を押すと編集フォームが開きます。</strong>
             <span>バックアップ保存・復元・操作履歴もこの一覧上部から操作できます。</span>
             <div class="record-target-list" aria-label="編集削除対象">
               <span>投稿</span>
@@ -2664,7 +2671,7 @@ body.modal-open {
             <label class="week-select-label">週ブロック<select id="record-week-select" aria-label="入力済み一覧の投稿週"></select></label>
             <input type="hidden" id="record-week-start">
             <input type="hidden" id="record-week-end">
-            <button class="btn" type="button" id="clear-record-filters">全て表示</button>
+            <button class="btn" type="button" id="clear-record-filters" aria-pressed="true">全期間表示中</button>
           </div>
           <div class="record-search-row">
             <label>過去データ検索<input type="search" id="record-search" placeholder="日付・SNS・内容・入力者で検索"></label>
@@ -2674,7 +2681,7 @@ body.modal-open {
             <input type="file" id="restore-backup" accept="application/json,.json" hidden>
             <button class="btn" type="button" id="export-history">履歴を保存</button>
           </div>
-          <p class="record-tool-note">「全データ」では投稿以外も同じ表に表示します。各行の右端から編集・削除できます。検索中は期間に関係なく該当データを表示します。</p>
+          <p class="record-tool-note">各カテゴリは全期間表示が初期状態です。週を選ぶとその週だけに絞り込めます。各行の右端から編集・削除できます。</p>
           <div id="record-tables"></div>
           <div class="record-maintenance">
             <details class="history-panel">
@@ -3710,6 +3717,11 @@ body.modal-open {
         lstep: `<h3>Lステップ ${recordCountLabel(weeklyLsteps.length)}</h3>${lstepRecordsHtml(weeklyLsteps)}`
       };
       $("#record-tables").innerHTML = tables[active] || tables.all;
+      const allPeriodButton = $("#clear-record-filters");
+      if (allPeriodButton) {
+        allPeriodButton.textContent = recordAllMode ? "全期間表示中" : "全期間を表示";
+        allPeriodButton.setAttribute("aria-pressed", String(recordAllMode));
+      }
       const labels = { all: "全データ", post: "投稿入力", work: "作品別推移", follower: "フォロワー管理", inquiry: "問い合わせ入力", lstep: "Lステップ管理" };
       $("#export-excel").textContent = `${labels[active] || "全データ"}をExcel出力`;
       bindRecordRowActions();
@@ -4058,6 +4070,9 @@ body.modal-open {
         const inputType = document.querySelector('[data-input-mode-panel="entry"] [data-input-tab].active')?.dataset.inputTab || "post";
         const recordTab = document.querySelector(`[data-record-tab="${inputType}"]`) || document.querySelector('[data-record-tab="all"]');
         $$('[data-record-tab]').forEach(tab => tab.classList.toggle('active', tab === recordTab));
+        recordAllMode = true;
+        $("#record-week-start").value = "";
+        $("#record-week-end").value = "";
       }
       $$('[data-input-mode-tab]').forEach(tab => tab.classList.toggle('active', tab.dataset.inputModeTab === mode));
       $$('[data-input-mode-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.inputModePanel === mode));
