@@ -1800,29 +1800,91 @@ tbody tr:nth-child(even) td {
   box-shadow: 0 2px 4px rgba(79, 70, 229, 0.1);
 }
 
-.follower-summary-grid {
+.follower-chart-grid {
   display: grid;
-  grid-template-columns: 360px 1fr;
-  gap: 24px;
-  align-items: start;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
 }
 
-.follower-summary-table-wrap {
-  max-height: 380px;
-  overflow: auto;
+.follower-chart-card {
+  min-width: 0;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 18px;
+  background: #fff;
+}
+
+.follower-chart-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.follower-chart-head h4 {
+  margin: 0;
+  color: var(--text-main);
+  font-size: 15px;
+}
+
+.follower-chart-head span {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.follower-sns-switch,
+.follower-table-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.follower-sns-btn,
+.follower-table-btn {
   border: 1px solid var(--border-color);
   border-radius: 6px;
+  padding: 7px 11px;
+  color: var(--text-muted);
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
-.follower-chart-area {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius-md);
-  padding: 24px;
-  background: var(--card-bg);
-  box-shadow: var(--shadow-sm);
+.follower-sns-btn.active,
+.follower-table-btn.active {
+  border-color: var(--primary);
+  color: #fff;
+  background: var(--primary);
+}
+
+.follower-table-section {
+  border-top: 1px solid var(--border-color);
+  padding-top: 16px;
+}
+
+.follower-table-panel {
+  display: none;
+  margin-top: 12px;
+}
+
+.follower-table-panel.active {
+  display: block;
+}
+
+.follower-table-panel th,
+.follower-table-panel td {
+  white-space: nowrap;
+}
+
+.follower-table-panel th:nth-child(3),
+.follower-table-panel td:nth-child(3) {
+  min-width: 110px;
 }
 
 .follower-chart {
@@ -1839,7 +1901,7 @@ tbody tr:nth-child(even) td {
   align-items: flex-end;
   gap: 12px;
   width: 100%;
-  height: 180px;
+  min-height: 210px;
   padding: 10px 20px 0;
   border-bottom: 2px solid var(--border-color);
 }
@@ -1848,8 +1910,31 @@ tbody tr:nth-child(even) td {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-end;
+  gap: 6px;
+  min-width: 54px;
   flex: 1;
+}
+
+.follower-chart-value {
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.follower-stacked-bar {
+  display: flex;
+  width: min(56px, 100%);
+  flex-direction: column-reverse;
+  overflow: hidden;
+  border-radius: 5px 5px 0 0;
+  background: #e2e8f0;
+}
+
+.follower-stack-segment {
+  width: 100%;
+  min-height: 1px;
 }
 
 .follower-bar {
@@ -1898,6 +1983,12 @@ tbody tr:nth-child(even) td {
   width: 10px;
   height: 10px;
   border-radius: 3px;
+}
+
+@media (max-width: 1100px) {
+  .follower-chart-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .work-chart {
@@ -2165,7 +2256,7 @@ body.modal-open {
     grid-template-columns: 1fr;
   }
 
-  .grid-2, .grid-3, .input-layout, .bottom-grid, .slide1-top, .sns-three, .sns-two, .slide2-bottom, .report-compact-grid, .follower-summary-grid, .metric-entry-panel, .video-metrics-panel, .work-filter-row, .follower-bulk-grid {
+  .grid-2, .grid-3, .input-layout, .bottom-grid, .slide1-top, .sns-three, .sns-two, .slide2-bottom, .report-compact-grid, .metric-entry-panel, .video-metrics-panel, .work-filter-row, .follower-bulk-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2570,33 +2661,39 @@ body.modal-open {
 
         <div class="summary-panel" data-summary-panel="followers">
           <h3 class="summary-section-title">フォロワー推移</h3>
-          <div class="follower-summary-grid">
-            <div>
-              <h4>週次</h4>
-              <div class="summary-breakdown-table">
-                <table>
-                  <thead>
-                    <tr><th>週</th><th>SNS</th><th>フォロワー数</th><th>前回比</th><th>増加率</th></tr>
-                  </thead>
-                  <tbody id="follower-week-body"></tbody>
-                </table>
+          <div class="follower-chart-grid">
+            <section class="follower-chart-card">
+              <div class="follower-chart-head">
+                <h4>月次合計</h4>
+                <span>SNS別の内訳</span>
               </div>
-            </div>
-            <div>
-              <h4>月次</h4>
-              <div class="summary-breakdown-table">
-                <table>
-                  <thead>
-                    <tr><th>月</th><th>SNS</th><th>フォロワー数</th><th>前回比</th><th>増加率</th></tr>
-                  </thead>
-                  <tbody id="follower-month-body"></tbody>
-                </table>
+              <div class="follower-chart-legend" id="follower-month-legend"></div>
+              <div class="follower-chart-bars" id="follower-month-chart"></div>
+            </section>
+            <section class="follower-chart-card">
+              <div class="follower-chart-head">
+                <h4>SNS別時系列</h4>
+                <span id="follower-series-label">週次</span>
               </div>
-            </div>
+              <div class="follower-sns-switch" id="follower-sns-switch" role="group" aria-label="表示するSNS"></div>
+              <div class="follower-chart-bars" id="follower-series-chart"></div>
+            </section>
           </div>
-          <div class="follower-chart" style="margin-top:14px;">
-            <div class="follower-chart-legend" id="follower-chart-legend"></div>
-            <div class="follower-chart-bars" id="follower-chart-bars"></div>
+          <div class="follower-table-section">
+            <div class="follower-table-switch" role="group" aria-label="フォロワー一覧の表示単位">
+              <button class="follower-table-btn active" type="button" data-follower-table-mode="week">週次一覧</button>
+              <button class="follower-table-btn" type="button" data-follower-table-mode="month">月次一覧</button>
+            </div>
+            <div class="follower-table-panel active" data-follower-table-panel="week">
+              <div class="summary-breakdown-table">
+                <table><thead><tr><th>週</th><th>SNS</th><th>フォロワー数</th><th>前回比</th><th>増加率</th></tr></thead><tbody id="follower-week-body"></tbody></table>
+              </div>
+            </div>
+            <div class="follower-table-panel" data-follower-table-panel="month">
+              <div class="summary-breakdown-table">
+                <table><thead><tr><th>月</th><th>SNS</th><th>フォロワー数</th><th>前回比</th><th>増加率</th></tr></thead><tbody id="follower-month-body"></tbody></table>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -2695,6 +2792,8 @@ body.modal-open {
     let postSort = { key: "date", direction: "desc" };
     let summaryBreakdownMode = "week";
     let workBreakdownMode = "day";
+    let followerTrendSns = "X";
+    let followerTableMode = "week";
     let cloudSyncReady = false;
     let cloudSaveTimer = null;
     let cloudSaveChain = Promise.resolve();
@@ -4259,10 +4358,19 @@ body.modal-open {
       $("#follower-week-body").innerHTML = followerTrendTableRows(weekRows) || `<tr><td colspan="5">データはありません。</td></tr>`;
       $("#follower-month-body").innerHTML = followerTrendTableRows(monthRows) || `<tr><td colspan="5">データはありません。</td></tr>`;
       const categories = visibleFollowerCategories(selectedBusiness);
-      $("#follower-chart-legend").innerHTML = categories.map((category, index) =>
-        `<span><i style="background:${followerColor(index)}"></i>${escapeHtml(category)}</span>`
+      const snsCategories = categories.filter(category => snsTypes.includes(category));
+      if (!snsCategories.includes(followerTrendSns)) followerTrendSns = snsCategories[0] || snsTypes[0];
+      $("#follower-month-legend").innerHTML = categories.map(category =>
+        `<span><i style="background:${followerCategoryColor(category)}"></i>${escapeHtml(category)}</span>`
       ).join("");
-      $("#follower-chart-bars").innerHTML = followerChartHtml(selectedBusiness);
+      $("#follower-month-chart").innerHTML = followerMonthlyChartHtml(selectedBusiness);
+      $("#follower-sns-switch").innerHTML = snsTypes.map(sns => `
+        <button class="follower-sns-btn ${sns === followerTrendSns ? "active" : ""}" type="button" data-follower-sns="${escapeHtml(sns)}" aria-pressed="${sns === followerTrendSns}">${escapeHtml(sns)}</button>
+      `).join("");
+      $("#follower-series-label").textContent = `${followerTrendSns}・週次`;
+      $("#follower-series-chart").innerHTML = followerSeriesChartHtml(selectedBusiness, followerTrendSns);
+      $$('[data-follower-table-mode]').forEach(button => button.classList.toggle('active', button.dataset.followerTableMode === followerTableMode));
+      $$('[data-follower-table-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.followerTablePanel === followerTableMode));
     }
 
     function latestFollowerPeriodRows(rows, limit) {
@@ -4325,7 +4433,13 @@ body.modal-open {
           }
         });
 
-      const chronological = Array.from(grouped.values()).sort((a, b) =>
+      const groupedRows = Array.from(grouped.values());
+      const periodsWithSnsRows = new Set(
+        groupedRows.filter(row => snsTypes.includes(row.category)).map(row => row.period)
+      );
+      const chronological = groupedRows
+        .filter(row => snsTypes.includes(row.category) || !periodsWithSnsRows.has(row.period))
+        .sort((a, b) =>
         a.category.localeCompare(b.category, "ja") || a.period.localeCompare(b.period)
       );
       const previousByCategory = new Map();
@@ -4357,35 +4471,48 @@ body.modal-open {
       return ["#4f46e5", "#3b82f6", "#06b6d4", "#10b981", "#8b5cf6", "#f59e0b"][index % 6];
     }
 
-    function followerChartHtml(selectedBusiness) {
+    function followerCategoryColor(category) {
+      const index = snsTypes.indexOf(category);
+      return index >= 0 ? followerColor(index) : "#64748b";
+    }
+
+    function followerMonthlyChartHtml(selectedBusiness) {
       const rows = followerTrendRows("month", selectedBusiness);
       const periods = Array.from(new Map(rows.map(row => [row.period, row.label])).entries()).slice(-6);
       const categories = visibleFollowerCategories(selectedBusiness);
       const byPeriodCategory = new Map(rows.map(row => [`${row.period}_${row.category}`, row.followers]));
       const totals = periods.map(([period]) => categories.reduce((sum, category) => sum + Number(byPeriodCategory.get(`${period}_${category}`) || 0), 0));
-      const validTotals = totals.filter(total => total > 0);
-      const max = Math.max(...validTotals, 1);
-      const min = Math.min(...validTotals, max);
-      const range = Math.max(max - min, 1);
+      const max = Math.max(...totals, 1);
       return periods.map(([period, label], periodIndex) => {
         const total = totals[periodIndex] || 0;
-        const height = total ? Math.max(36, Math.round(42 + ((total - min) / range) * 105)) : 12;
-        let offset = 0;
-        const colorStops = total ? categories.flatMap((category, index) => {
+        const height = total ? Math.max(30, Math.round((total / max) * 150)) : 10;
+        const segments = categories.map(category => {
           const value = Number(byPeriodCategory.get(`${period}_${category}`) || 0);
-          const start = (offset / total) * 100;
-          offset += value;
-          const end = (offset / total) * 100;
-          return [`${followerColor(index)} ${start.toFixed(2)}%`, `${followerColor(index)} ${end.toFixed(2)}%`];
-        }).join(",") : "";
-        const background = colorStops ? `linear-gradient(to top, ${colorStops})` : "#cbd5e1";
+          return value ? `<div class="follower-stack-segment" style="flex:${value};background:${followerCategoryColor(category)}" title="${escapeHtml(category)} ${value.toLocaleString()}人"></div>` : "";
+        }).join("");
         return `
           <div class="follower-chart-col">
-            <div class="follower-bar" style="height:${height}px;background:${background}" title="${escapeHtml(label)} 合計 ${total.toLocaleString()}人">${total.toLocaleString()}</div>
+            <span class="follower-chart-value">${total.toLocaleString()}人</span>
+            <div class="follower-stacked-bar" style="height:${height}px" title="${escapeHtml(label)} 合計 ${total.toLocaleString()}人">${segments}</div>
             <div class="follower-chart-label">${escapeHtml(label)}</div>
           </div>
         `;
       }).join("") || `<div class="empty-state">グラフに表示するデータがありません。</div>`;
+    }
+
+    function followerSeriesChartHtml(selectedBusiness, sns) {
+      const rows = followerTrendRows("week", selectedBusiness).filter(row => row.category === sns).slice(-8);
+      const max = Math.max(...rows.map(row => row.followers), 1);
+      return rows.map(row => {
+        const height = row.followers ? Math.max(24, Math.round((row.followers / max) * 150)) : 10;
+        return `
+          <div class="follower-chart-col">
+            <span class="follower-chart-value">${row.followers.toLocaleString()}人</span>
+            <div class="follower-bar" style="height:${height}px;background:${followerCategoryColor(sns)}" title="${escapeHtml(row.label)} ${row.followers.toLocaleString()}人"></div>
+            <div class="follower-chart-label">${escapeHtml(dateLabel(row.period))}週</div>
+          </div>
+        `;
+      }).join("") || `<div class="empty-state">${escapeHtml(sns)}の時系列データがありません。</div>`;
     }
 
     function summaryBreakdownLabels() {
@@ -5337,6 +5464,20 @@ body.modal-open {
 
     $$('[data-input-mode-tab]').forEach(button => {
       button.addEventListener('click', () => setInputMode(button.dataset.inputModeTab));
+    });
+
+    $("#view-summary").addEventListener("click", event => {
+      const snsButton = event.target.closest("[data-follower-sns]");
+      if (snsButton) {
+        followerTrendSns = snsButton.dataset.followerSns;
+        renderFollowerSummary(businesses[0]);
+        return;
+      }
+      const tableButton = event.target.closest("[data-follower-table-mode]");
+      if (tableButton) {
+        followerTableMode = tableButton.dataset.followerTableMode;
+        renderFollowerSummary(businesses[0]);
+      }
     });
 
     $$("[data-input-tab]").forEach(button => {
