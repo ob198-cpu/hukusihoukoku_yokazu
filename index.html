@@ -1770,6 +1770,63 @@ tbody tr:nth-child(even) td {
   margin: 0;
 }
 
+.summary-work-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 24px 0 12px;
+}
+
+.summary-work-heading .summary-section-title {
+  margin: 0;
+}
+
+.summary-count-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 4px 10px;
+  color: var(--primary);
+  background: #eef2ff;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.summary-work-detail {
+  margin-top: 24px;
+}
+
+.summary-work-detail .summary-section-title {
+  margin-bottom: 10px;
+}
+
+.work-summary-table,
+.summary-work-detail-table {
+  max-height: 520px;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+
+.work-summary-table {
+  margin-top: 12px;
+}
+
+.work-summary-table table,
+.summary-work-detail-table table {
+  min-width: 980px;
+}
+
+.work-summary-table thead th,
+.summary-work-detail-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: #f8fafc;
+}
+
 .summary-mode-tabs {
   display: flex;
   gap: 6px;
@@ -2577,7 +2634,7 @@ body.modal-open {
             <span>バックアップ保存・復元・操作履歴もこの一覧上部から操作できます。</span>
             <div class="record-target-list" aria-label="編集削除対象">
               <span>投稿</span>
-              <span>作品別推移</span>
+              <span>作品別推移（集計で表示）</span>
               <span>フォロワー管理</span>
               <span>問い合わせ入力</span>
               <span>Lステップ管理</span>
@@ -2586,7 +2643,6 @@ body.modal-open {
           <div class="input-tabs">
             <button class="input-tab active" type="button" data-record-tab="all">全データ</button>
             <button class="input-tab" type="button" data-record-tab="post">投稿入力</button>
-            <button class="input-tab" type="button" data-record-tab="work">作品別推移</button>
             <button class="input-tab" type="button" data-record-tab="follower">フォロワー管理</button>
             <button class="input-tab" type="button" data-record-tab="inquiry">問い合わせ入力</button>
             <button class="input-tab" type="button" data-record-tab="lstep">Lステップ管理</button>
@@ -2698,7 +2754,10 @@ body.modal-open {
         </div>
 
         <div class="summary-panel" data-summary-panel="works">
-          <h3 class="summary-section-title">作品別インプレッション推移</h3>
+          <div class="summary-work-heading">
+            <h3 class="summary-section-title">作品別推移</h3>
+            <span class="summary-count-badge" id="summary-work-count">0件</span>
+          </div>
           <div class="summary-mode-tabs" aria-label="作品別推移の表示単位">
             <button class="summary-mode-btn active" type="button" data-work-mode="day">日別</button>
             <button class="summary-mode-btn" type="button" data-work-mode="week">週別</button>
@@ -3688,7 +3747,7 @@ body.modal-open {
       });
       const totalRow = ["合計", ...periodKeys.map(key => works.reduce((sum, work) => sum + Number(valueMap.get(`${work}__${key}`) || 0), 0).toLocaleString())];
       totalRow.push(sourceRows.reduce((sum, row) => sum + Number(row.impressions || 0), 0).toLocaleString());
-      return workMetricChartHtml(periods, works, valueMap) + tableHtml(headers, [...bodyRows, totalRow]);
+      return workMetricChartHtml(periods, works, valueMap) + `<div class="work-summary-table">${tableHtml(headers, [...bodyRows, totalRow])}</div>`;
     }
 
     function workMetricChartHtml(periods, works, valueMap) {
@@ -3868,9 +3927,9 @@ body.modal-open {
         </tbody></table>`;
     }
 
-    function workRecordsHtml(rows) {
+    function workMetricDetailHtml(rows) {
       const detailRows = rows.slice().sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.inputAt || "").localeCompare(a.inputAt || ""));
-      return workMetricTableHtml(rows) + `<h4 class="summary-section-title">入力明細</h4><table><thead><tr>
+      return `<section class="summary-work-detail"><h4 class="summary-section-title">入力明細</h4><div class="summary-work-detail-table"><table><thead><tr>
         <th>確認日</th><th>SNS</th><th>投稿日</th><th>テーマ</th><th>作品名</th><th>数値</th><th>入力者</th><th>入力時間</th><th>操作</th>
       </tr></thead><tbody>
         ${detailRows.map(item => `<tr>
@@ -3884,7 +3943,11 @@ body.modal-open {
           <td>${escapeHtml(fullDateTime(item.inputAt))}</td>
           <td>${recordActionButtons("work", item.id)}</td>
         </tr>`).join("") || `<tr><td colspan="9">データはありません。</td></tr>`}
-      </tbody></table>`;
+      </tbody></table></div></section>`;
+    }
+
+    function workRecordsHtml(rows) {
+      return workMetricTableHtml(rows) + workMetricDetailHtml(rows);
     }
 
     function followerRecordsHtml(rows) {
@@ -4349,7 +4412,8 @@ body.modal-open {
         button.classList.toggle("active", button.dataset.workMode === workBreakdownMode);
       });
       const rows = data.workMetrics.filter(item => isInSummaryRange(item.date));
-      $("#summary-work-metrics").innerHTML = workMetricTableHtml(rows, workBreakdownMode);
+      $("#summary-work-count").textContent = `${rows.length}件`;
+      $("#summary-work-metrics").innerHTML = workMetricTableHtml(rows, workBreakdownMode) + workMetricDetailHtml(rows);
     }
 
     function renderFollowerSummary(selectedBusiness) {
@@ -5467,6 +5531,16 @@ body.modal-open {
     });
 
     $("#view-summary").addEventListener("click", event => {
+      const editButton = event.target.closest("[data-edit-record]");
+      if (editButton) {
+        startRecordEdit(editButton.dataset.editRecord, editButton.dataset.recordId);
+        return;
+      }
+      const deleteButton = event.target.closest("[data-delete-record]");
+      if (deleteButton) {
+        deleteRecord(deleteButton.dataset.deleteRecord, deleteButton.dataset.recordId);
+        return;
+      }
       const snsButton = event.target.closest("[data-follower-sns]");
       if (snsButton) {
         followerTrendSns = snsButton.dataset.followerSns;
