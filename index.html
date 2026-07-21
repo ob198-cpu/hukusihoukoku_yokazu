@@ -1976,6 +1976,23 @@ tbody tr:nth-child(even) td {
   background: #f8fafc;
 }
 
+.work-summary-table th:last-child,
+.work-summary-table td:last-child {
+  position: sticky;
+  right: 0;
+  width: 82px;
+  min-width: 82px;
+  text-align: center;
+  white-space: nowrap;
+  background: #fff;
+  box-shadow: -1px 0 0 var(--border-color);
+}
+
+.work-summary-table thead th:last-child {
+  z-index: 2;
+  background: #f8fafc;
+}
+
 .summary-mode-tabs {
   display: flex;
   gap: 6px;
@@ -3869,10 +3886,15 @@ body.modal-open {
     function workMetricTableHtml(rows, mode = workBreakdownMode) {
       const sourceRows = latestWorkMetricRowsByCheckpoint(rows);
       const periodMap = new Map();
+      const latestRowByWork = new Map();
       sourceRows.forEach(row => {
         if (!row.date) return;
         const period = summaryPeriodInfo(row.date, mode);
         if (period.key) periodMap.set(period.key, period.label);
+        if (!row.workName) return;
+        const stamp = `${row.date || ""}_${row.updatedAt || row.inputAt || ""}`;
+        const current = latestRowByWork.get(row.workName);
+        if (!current || stamp >= current.stamp) latestRowByWork.set(row.workName, { row, stamp });
       });
       const periods = Array.from(periodMap.entries()).sort(([a], [b]) => a.localeCompare(b)).slice(-WORK_DATE_LIMIT);
       const periodKeys = periods.map(([key]) => key);
@@ -3887,14 +3909,26 @@ body.modal-open {
       if (!periods.length || !works.length) {
         return tableHtml(["作品名", "数値"], []);
       }
-      const headers = ["作品名", ...periods.map(([, label]) => label), "合計"];
+      const headers = ["作品名", ...periods.map(([, label]) => label), "合計", "操作"];
       const bodyRows = works.map(work => {
         const values = periodKeys.map(key => Number(valueMap.get(`${work}__${key}`) || 0));
-        return [work, ...values.map(value => value.toLocaleString()), values.reduce((sum, value) => sum + value, 0).toLocaleString()];
+        const latest = latestRowByWork.get(work)?.row;
+        return `<tr>
+          <td>${escapeHtml(work)}</td>
+          ${values.map(value => `<td>${value.toLocaleString()}</td>`).join("")}
+          <td>${values.reduce((sum, value) => sum + value, 0).toLocaleString()}</td>
+          <td>${latest?.id ? `<button class="btn small" type="button" data-edit-record="work" data-record-id="${escapeHtml(latest.id)}">編集</button>` : "-"}</td>
+        </tr>`;
       });
       const totalRow = ["合計", ...periodKeys.map(key => works.reduce((sum, work) => sum + Number(valueMap.get(`${work}__${key}`) || 0), 0).toLocaleString())];
       totalRow.push(sourceRows.reduce((sum, row) => sum + Number(row.impressions || 0), 0).toLocaleString());
-      return workMetricChartHtml(periods, works, valueMap) + `<div class="work-summary-table">${tableHtml(headers, [...bodyRows, totalRow])}</div>`;
+      return workMetricChartHtml(periods, works, valueMap) + `<div class="work-summary-table"><table>
+        <thead><tr>${headers.map(header => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead>
+        <tbody>
+          ${bodyRows.join("")}
+          <tr>${totalRow.map(cell => `<td>${escapeHtml(cell)}</td>`).join("")}<td>-</td></tr>
+        </tbody>
+      </table></div>`;
     }
 
     function workMetricChartHtml(periods, works, valueMap) {
