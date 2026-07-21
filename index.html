@@ -1733,22 +1733,19 @@ tbody tr:nth-child(even) td {
   display: none;
 }
 
-.record-summary-redirect {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 18px 4px;
+.record-work-panel {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding: 4px;
 }
 
-.record-summary-redirect h3,
-.record-summary-redirect p {
+.record-work-panel .summary-mode-tabs {
   margin: 0;
 }
 
-.record-summary-redirect p {
-  margin-top: 4px;
-  color: var(--text-muted);
+.record-work-content {
+  min-width: 0;
 }
 
 .post-record-table {
@@ -3047,18 +3044,6 @@ body.modal-open {
             <h3 class="summary-section-title">作品別推移</h3>
             <span class="summary-count-badge" id="summary-work-count">0件</span>
           </div>
-          <div class="summary-mode-tabs" aria-label="作品別推移の表示単位">
-            <button class="summary-mode-btn active" type="button" data-work-mode="day">日別</button>
-            <button class="summary-mode-btn" type="button" data-work-mode="week">週別</button>
-            <button class="summary-mode-btn" type="button" data-work-mode="month">月別</button>
-          </div>
-          <div class="summary-mode-tabs work-view-tabs" role="tablist" aria-label="作品別推移の表示内容">
-            <button class="summary-mode-btn active" type="button" role="tab" aria-selected="true" data-work-view="chart">グラフ</button>
-            <button class="summary-mode-btn" type="button" role="tab" aria-selected="false" data-work-view="list">逐語一覧</button>
-            <button class="summary-mode-btn" type="button" role="tab" aria-selected="false" data-work-view="table">集計表</button>
-            <button class="summary-mode-btn" type="button" role="tab" aria-selected="false" data-work-view="detail">入力明細</button>
-          </div>
-          <p class="summary-limit-note">表示は最新12回分です。全期間のデータはExcel出力で確認します。</p>
           <div id="summary-work-metrics"></div>
         </div>
 
@@ -3146,7 +3131,7 @@ body.modal-open {
     let postSort = { key: "date", direction: "desc" };
     let summaryBreakdownMode = "week";
     let workBreakdownMode = "day";
-    let workDisplayMode = "chart";
+    let workDisplayMode = "list";
     let followerTrendSns = "X";
     let followerTableMode = "week";
     let cloudSyncReady = false;
@@ -3988,7 +3973,7 @@ body.modal-open {
       const tables = {
         all: allRecordsHtml(),
         post: `<h3>投稿 ${recordCountLabel(sortedPosts.length)}</h3>${postTableHtml(visiblePosts)}`,
-        work: `<div class="record-summary-redirect"><div><h3>作品別推移</h3><p>作品別推移の確認・編集は集計シートにまとめています。</p></div><button class="btn primary" type="button" id="open-work-summary">集計の作品別推移を開く</button></div>`,
+        work: workRecordPanelHtml(data.workMetrics),
         follower: `<h3>フォロワー ${recordCountLabel(followerRows.length)}</h3>${followerRecordsHtml(followerRows)}`,
         inquiry: `<h3>問い合わせ ${recordCountLabel(weeklyInquiries.length)}</h3>${inquiryRecordsHtml(weeklyInquiries)}`,
         lstep: `<h3>Lステップ ${recordCountLabel(weeklyLsteps.length)}</h3>${lstepRecordsHtml(weeklyLsteps)}`
@@ -4006,7 +3991,9 @@ body.modal-open {
       if (active === "post") {
         bindPostSortHeaders();
       }
-      $("#open-work-summary")?.addEventListener("click", showSummaryWorks);
+      if (active === "work") {
+        bindWorkRecordControls();
+      }
       renderHistory();
     }
 
@@ -4100,6 +4087,63 @@ body.modal-open {
           </div>`;
         }).join("")}
       </div>`;
+    }
+
+    function workRecordViewHtml(rows) {
+      const views = {
+        list: () => workMetricWorksListHtml(rows, workBreakdownMode),
+        table: () => workMetricTableHtml(rows, workBreakdownMode),
+        detail: () => workMetricDetailHtml(rows)
+      };
+      return (views[workDisplayMode] || views.list)();
+    }
+
+    function workRecordPanelHtml(rows) {
+      return `<section class="record-work-panel">
+        <div class="summary-work-heading">
+          <h3 class="summary-section-title">作品別推移</h3>
+          <span class="summary-count-badge">${rows.length}件</span>
+        </div>
+        <div class="summary-mode-tabs" aria-label="作品別推移の表示単位">
+          <button class="summary-mode-btn ${workBreakdownMode === "day" ? "active" : ""}" type="button" data-record-work-mode="day">日別</button>
+          <button class="summary-mode-btn ${workBreakdownMode === "week" ? "active" : ""}" type="button" data-record-work-mode="week">週別</button>
+          <button class="summary-mode-btn ${workBreakdownMode === "month" ? "active" : ""}" type="button" data-record-work-mode="month">月別</button>
+        </div>
+        <div class="summary-mode-tabs work-view-tabs" role="tablist" aria-label="作品別推移の表示内容">
+          <button class="summary-mode-btn ${workDisplayMode === "list" ? "active" : ""}" type="button" role="tab" aria-selected="${workDisplayMode === "list"}" data-record-work-view="list">逐語一覧</button>
+          <button class="summary-mode-btn ${workDisplayMode === "table" ? "active" : ""}" type="button" role="tab" aria-selected="${workDisplayMode === "table"}" data-record-work-view="table">集計表</button>
+          <button class="summary-mode-btn ${workDisplayMode === "detail" ? "active" : ""}" type="button" role="tab" aria-selected="${workDisplayMode === "detail"}" data-record-work-view="detail">入力明細</button>
+        </div>
+        <div class="record-work-content" id="record-work-content">${workRecordViewHtml(rows)}</div>
+      </section>`;
+    }
+
+    function renderWorkRecordContent() {
+      const target = $("#record-work-content");
+      if (!target) return;
+      target.innerHTML = workRecordViewHtml(data.workMetrics);
+      $$('[data-record-work-mode]').forEach(button => button.classList.toggle('active', button.dataset.recordWorkMode === workBreakdownMode));
+      $$('[data-record-work-view]').forEach(button => {
+        const selected = button.dataset.recordWorkView === workDisplayMode;
+        button.classList.toggle('active', selected);
+        button.setAttribute('aria-selected', String(selected));
+      });
+      bindRecordRowActions();
+    }
+
+    function bindWorkRecordControls() {
+      $$('[data-record-work-mode]').forEach(button => {
+        button.addEventListener('click', () => {
+          workBreakdownMode = button.dataset.recordWorkMode;
+          renderWorkRecordContent();
+        });
+      });
+      $$('[data-record-work-view]').forEach(button => {
+        button.addEventListener('click', () => {
+          workDisplayMode = button.dataset.recordWorkView;
+          renderWorkRecordContent();
+        });
+      });
     }
 
     function workMetricChartHtml(periods, works, valueMap) {
@@ -4749,23 +4793,9 @@ body.modal-open {
     }
 
     function renderSummaryWorkMetrics() {
-      $$("[data-work-mode]").forEach(button => {
-        button.classList.toggle("active", button.dataset.workMode === workBreakdownMode);
-      });
-      $$("[data-work-view]").forEach(button => {
-        const selected = button.dataset.workView === workDisplayMode;
-        button.classList.toggle("active", selected);
-        button.setAttribute("aria-selected", String(selected));
-      });
       const rows = data.workMetrics.filter(item => isInSummaryRange(item.date));
       $("#summary-work-count").textContent = `${rows.length}件`;
-      const viewHtml = {
-        chart: () => workMetricChartForRowsHtml(rows, workBreakdownMode),
-        list: () => workMetricWorksListHtml(rows, workBreakdownMode),
-        table: () => workMetricTableHtml(rows, workBreakdownMode),
-        detail: () => workMetricDetailHtml(rows)
-      };
-      $("#summary-work-metrics").innerHTML = (viewHtml[workDisplayMode] || viewHtml.chart)();
+      $("#summary-work-metrics").innerHTML = workMetricChartForRowsHtml(rows, "day");
     }
 
     function renderFollowerSummary(selectedBusiness) {
@@ -5870,18 +5900,6 @@ body.modal-open {
       $("#summary-start").value = bounds.start;
       $("#summary-end").value = bounds.end;
       renderSummary();
-    });
-    $$("[data-work-mode]").forEach(button => {
-      button.addEventListener("click", () => {
-        workBreakdownMode = button.dataset.workMode;
-        renderSummaryWorkMetrics();
-      });
-    });
-    $$("[data-work-view]").forEach(button => {
-      button.addEventListener("click", () => {
-        workDisplayMode = button.dataset.workView;
-        renderSummaryWorkMetrics();
-      });
     });
     $$("[data-summary-tab]").forEach(button => {
       button.addEventListener("click", () => setSummaryTab(button.dataset.summaryTab));
