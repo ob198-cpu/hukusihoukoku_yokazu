@@ -3718,15 +3718,14 @@ body.modal-open {
         rowsByBusiness.get(business).push(item);
       });
       return Array.from(rowsByBusiness.values()).flatMap(businessRows => {
-        const snsRows = businessRows.filter(item => snsTypes.includes(item.sns));
-        if (!snsRows.length) return businessRows.filter(item => !item.sns);
-        const firstSnsDate = snsRows.reduce((earliest, item) =>
-          !earliest || item.date < earliest ? item.date : earliest, ""
+        const business = businessRows[0]?.business || businesses[0];
+        const hasSnsHistory = data.followers.some(item =>
+          (item.business || businesses[0]) === business &&
+          snsTypes.includes(item.sns)
         );
-        return [
-          ...businessRows.filter(item => !item.sns && item.date < firstSnsDate),
-          ...snsRows
-        ];
+        const snsRows = businessRows.filter(item => snsTypes.includes(item.sns));
+        // SNS別管理へ移行済みなら、旧一括入力を同じ推移に混在させない。
+        return hasSnsHistory ? snsRows : businessRows.filter(item => !item.sns);
       });
     }
 
