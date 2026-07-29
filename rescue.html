@@ -275,10 +275,15 @@
   <script>
     "use strict";
 
-    const CANDIDATE_KEYS = [
+    const PRIMARY_KEYS = [
       "sns_operation_report_yokazu_v4",
       "sns_operation_report_single_site_v3"
     ];
+    const CURRENT_STORAGE_KEY = "sns_operation_report_yokazu_v4";
+    const CLOUD_PENDING_PREFIX = CURRENT_STORAGE_KEY + ":cloud_pending_v2";
+    const CLOUD_PENDING_KEY = CLOUD_PENDING_PREFIX;
+    const CLOUD_BASE_KEY = CURRENT_STORAGE_KEY + ":cloud_base_v2";
+    const CLOUD_RECOVERY_KEY = CURRENT_STORAGE_KEY + ":recovery_snapshots_v2";
 
     const LABELS = {
       posts: "投稿",
@@ -309,30 +314,82 @@
       return Array.isArray(data?.[key]) ? data[key].length : 0;
     }
 
-    function collectSnapshots() {
-      return CANDIDATE_KEYS.map(key => {
-        const raw = localStorage.getItem(key);
-        if (raw === null) return { key, found: false };
-        try {
-          const parsed = JSON.parse(raw);
-          return {
-            key,
-            found: true,
-            valid: true,
-            raw,
-            parsed,
-            data: asData(parsed)
-          };
-        } catch (error) {
-          return {
-            key,
-            found: true,
-            valid: false,
-            raw,
-            error: String(error?.message || error)
-          };
+    function readSnapshot(key, displayKey = key, reason = "") {
+      const raw = localStorage.getItem(key);
+      if (raw === null) return { key: displayKey, sourceKey: key, found: false };
+      try {
+        const parsed = JSON.parse(raw);
+        return {
+          key: displayKey,
+          sourceKey: key,
+          reason,
+          found: true,
+          valid: true,
+          raw,
+          parsed,
+          data: asData(parsed)
+        };
+      } catch (error) {
+        return {
+          key: displayKey,
+          sourceKey: key,
+          reason,
+          found: true,
+          valid: false,
+          raw,
+          error: String(error?.message || error)
+        };
+      }
+    }
+
+    function collectRecoverySnapshots() {
+      const raw = localStorage.getItem(CLOUD_RECOVERY_KEY);
+      if (raw === null) return [];
+      try {
+        const entries = JSON.parse(raw);
+        if (!Array.isArray(entries)) {
+          throw new Error("復旧スナップショットの形式が配列ではありません。");
         }
-      });
+        return entries.map((entry, index) => ({
+          key: `${CLOUD_RECOVERY_KEY}[${index + 1}]`,
+          sourceKey: CLOUD_RECOVERY_KEY,
+          reason: entry?.reason || "自動復旧スナップショット",
+          found: true,
+          valid: Boolean(entry && entry.data && typeof entry.data === "object"),
+          raw: JSON.stringify(entry),
+          parsed: entry,
+          data: asData(entry),
+          error: entry && entry.data
+            ? ""
+            : "復旧スナップショット内にデータ本体がありません。"
+        }));
+      } catch (error) {
+        return [{
+          key: CLOUD_RECOVERY_KEY,
+          sourceKey: CLOUD_RECOVERY_KEY,
+          reason: "自動復旧スナップショット",
+          found: true,
+          valid: false,
+          raw,
+          error: String(error?.message || error)
+        }];
+      }
+    }
+
+    function collectSnapshots() {
+      const primary = PRIMARY_KEYS.map(key => readSnapshot(key));
+      const pendingKeys = [];
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index);
+        if (key === CLOUD_PENDING_PREFIX || key?.startsWith(CLOUD_PENDING_PREFIX + ":")) {
+          pendingKeys.push(key);
+        }
+      }
+      const additional = [
+        ...pendingKeys.map(key => readSnapshot(key, key, "サーバーへの保存待ちデータ")),
+        readSnapshot(CLOUD_BASE_KEY, CLOUD_BASE_KEY, "最後に確認できたサーバーデータ")
+      ].filter(item => item.found);
+      return [...primary, ...additional, ...collectRecoverySnapshots()];
     }
 
     function latestStamp(data) {
@@ -399,6 +456,7 @@
             <code>${escapeHtml(snapshot.key)}</code>
           </div>
           <div class="snapshot-body">
+            ${snapshot.reason ? `<p><strong>保存理由:</strong> ${escapeHtml(snapshot.reason)}</p>` : ""}
             <div class="counts">${countHtml}</div>
             <p>記録内の最終更新候補: ${escapeHtml(latestStamp(data))}</p>
             ${posts.length ? `
@@ -474,6 +532,8 @@
         userAgent: navigator.userAgent,
         snapshots: found.map(item => ({
           key: item.key,
+          sourceKey: item.sourceKey || item.key,
+          reason: item.reason || "",
           validJson: Boolean(item.valid),
           raw: item.raw
         }))
