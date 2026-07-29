@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>SNS運用報告 緊急データ救出</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --navy: #173c64;
+      --blue: #245f9d;
+      --pale: #eef5fc;
+      --line: #c8d8e9;
+      --text: #16263a;
+      --muted: #5f7084;
+      --danger: #b42318;
+      --success: #087443;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: #f3f6fa;
+      color: var(--text);
+      font-family: "Yu Gothic UI", "Meiryo", sans-serif;
+      line-height: 1.6;
+    }
+
+    header {
+      background: var(--navy);
+      color: #fff;
+      padding: 20px clamp(18px, 4vw, 48px);
+    }
+
+    header p,
+    header h1 {
+      margin: 0;
+    }
+
+    header p {
+      color: #d8e7f5;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    header h1 {
+      margin-top: 3px;
+      font-size: clamp(22px, 3vw, 30px);
+      letter-spacing: 0;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 28px));
+      margin: 24px auto 48px;
+    }
+
+    .notice,
+    .panel {
+      border: 1px solid var(--line);
+      background: #fff;
+      border-radius: 8px;
+    }
+
+    .notice {
+      border-left: 6px solid var(--danger);
+      padding: 16px 18px;
+    }
+
+    .notice strong {
+      color: var(--danger);
+    }
+
+    .panel {
+      margin-top: 18px;
+      padding: 20px;
+    }
+
+    .panel h2 {
+      margin: 0 0 12px;
+      font-size: 20px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    button {
+      min-height: 46px;
+      border: 1px solid var(--blue);
+      border-radius: 6px;
+      background: #fff;
+      color: var(--navy);
+      padding: 0 18px;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button.primary {
+      background: var(--blue);
+      color: #fff;
+    }
+
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .status {
+      margin-top: 14px;
+      min-height: 28px;
+      font-weight: 700;
+    }
+
+    .status.ok {
+      color: var(--success);
+    }
+
+    .status.error {
+      color: var(--danger);
+    }
+
+    .snapshot {
+      margin-top: 14px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      overflow: hidden;
+    }
+
+    .snapshot-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: var(--pale);
+      padding: 12px 14px;
+    }
+
+    .snapshot-head strong,
+    .snapshot-head code {
+      overflow-wrap: anywhere;
+    }
+
+    .snapshot-body {
+      padding: 14px;
+    }
+
+    .counts {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(100px, 1fr));
+      gap: 8px;
+    }
+
+    .count {
+      border: 1px solid var(--line);
+      padding: 10px;
+      text-align: center;
+    }
+
+    .count span,
+    .count strong {
+      display: block;
+    }
+
+    .count span {
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .count strong {
+      margin-top: 2px;
+      font-size: 22px;
+    }
+
+    .table-wrap {
+      margin-top: 14px;
+      overflow: auto;
+      max-height: 420px;
+      border: 1px solid var(--line);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+      background: #fff;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 9px 10px;
+      text-align: left;
+      vertical-align: top;
+      white-space: nowrap;
+    }
+
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--pale);
+      color: var(--navy);
+    }
+
+    td.content {
+      min-width: 320px;
+      white-space: normal;
+    }
+
+    .empty {
+      color: var(--muted);
+      padding: 18px 0 4px;
+    }
+
+    ol {
+      margin: 8px 0 0;
+      padding-left: 24px;
+    }
+
+    @media (max-width: 760px) {
+      .counts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .snapshot-head {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <p>株式会社よかず様 SNS運用報告</p>
+    <h1>緊急データ救出</h1>
+  </header>
+
+  <main>
+    <section class="notice">
+      <strong>このページは読み取り専用です。</strong>
+      クラウドやスプレッドシートへ送信せず、このブラウザに残っている候補データだけを表示・保存します。
+      救出ファイルを保存するまで、通常のSNS運用報告画面を開いたり、ブラウザの履歴・キャッシュを削除したりしないでください。
+    </section>
+
+    <section class="panel">
+      <h2>救出手順</h2>
+      <ol>
+        <li>実際に入力したPC・ブラウザ・ユーザープロフィールでこのページを開きます。</li>
+        <li>下の件数と投稿一覧を確認します。</li>
+        <li>「緊急バックアップを保存」を押し、ダウンロードされたJSONファイルを保管します。</li>
+        <li>救出ファイルの確認が終わるまで、通常画面で新しい入力や保存をしないでください。</li>
+      </ol>
+      <div class="actions">
+        <button type="button" class="primary" id="download-all">緊急バックアップを保存</button>
+        <button type="button" id="download-posts">投稿一覧をCSV保存</button>
+        <button type="button" id="refresh">ブラウザ内を再確認</button>
+      </div>
+      <div class="status" id="status" role="status" aria-live="polite"></div>
+    </section>
+
+    <section class="panel">
+      <h2>このブラウザに残っている候補</h2>
+      <div id="results"></div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const CANDIDATE_KEYS = [
+      "sns_operation_report_yokazu_v4",
+      "sns_operation_report_single_site_v3"
+    ];
+
+    const LABELS = {
+      posts: "投稿",
+      workMetrics: "作品別推移",
+      followers: "フォロワー",
+      inquiries: "問い合わせ",
+      lsteps: "Lステップ",
+      history: "履歴"
+    };
+
+    let snapshots = [];
+
+    const escapeHtml = value => String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#39;");
+
+    function asData(parsed) {
+      if (parsed && typeof parsed === "object" && parsed.data && typeof parsed.data === "object") {
+        return parsed.data;
+      }
+      return parsed && typeof parsed === "object" ? parsed : {};
+    }
+
+    function countRows(data, key) {
+      return Array.isArray(data?.[key]) ? data[key].length : 0;
+    }
+
+    function collectSnapshots() {
+      return CANDIDATE_KEYS.map(key => {
+        const raw = localStorage.getItem(key);
+        if (raw === null) return { key, found: false };
+        try {
+          const parsed = JSON.parse(raw);
+          return {
+            key,
+            found: true,
+            valid: true,
+            raw,
+            parsed,
+            data: asData(parsed)
+          };
+        } catch (error) {
+          return {
+            key,
+            found: true,
+            valid: false,
+            raw,
+            error: String(error?.message || error)
+          };
+        }
+      });
+    }
+
+    function latestStamp(data) {
+      const records = ["posts", "workMetrics", "followers", "inquiries", "lsteps", "history"]
+        .flatMap(key => Array.isArray(data?.[key]) ? data[key] : []);
+      return records
+        .map(row => row?.updatedAt || row?.inputAt || row?.at || "")
+        .filter(Boolean)
+        .sort()
+        .at(-1) || "-";
+    }
+
+    function renderSnapshot(snapshot) {
+      if (!snapshot.found) {
+        return `
+          <article class="snapshot">
+            <div class="snapshot-head">
+              <strong>候補なし</strong>
+              <code>${escapeHtml(snapshot.key)}</code>
+            </div>
+          </article>`;
+      }
+
+      if (!snapshot.valid) {
+        return `
+          <article class="snapshot">
+            <div class="snapshot-head">
+              <strong>データはありますがJSON解析に失敗しました</strong>
+              <code>${escapeHtml(snapshot.key)}</code>
+            </div>
+            <div class="snapshot-body">
+              <p>${escapeHtml(snapshot.error)}</p>
+              <p>生データは緊急バックアップにそのまま収録されます。</p>
+            </div>
+          </article>`;
+      }
+
+      const data = snapshot.data;
+      const posts = Array.isArray(data.posts) ? data.posts.slice() : [];
+      posts.sort((a, b) => String(b.updatedAt || b.inputAt || b.date || "")
+        .localeCompare(String(a.updatedAt || a.inputAt || a.date || "")));
+
+      const countHtml = Object.entries(LABELS).map(([key, label]) => `
+        <div class="count">
+          <span>${escapeHtml(label)}</span>
+          <strong>${countRows(data, key)}</strong>
+        </div>`).join("");
+
+      const postRows = posts.map(post => `
+        <tr>
+          <td>${escapeHtml(post.date || "-")}</td>
+          <td>${escapeHtml(post.sns || "-")}</td>
+          <td>${escapeHtml(post.theme || "-")}</td>
+          <td class="content">${escapeHtml(post.content || post.workName || "-")}</td>
+          <td>${escapeHtml(post.impressions ?? 0)}</td>
+          <td>${escapeHtml(post.operator || "-")}</td>
+          <td>${escapeHtml(post.updatedAt || post.inputAt || "-")}</td>
+        </tr>`).join("");
+
+      return `
+        <article class="snapshot">
+          <div class="snapshot-head">
+            <strong>保存候補あり・${new Blob([snapshot.raw]).size.toLocaleString("ja-JP")}バイト</strong>
+            <code>${escapeHtml(snapshot.key)}</code>
+          </div>
+          <div class="snapshot-body">
+            <div class="counts">${countHtml}</div>
+            <p>記録内の最終更新候補: ${escapeHtml(latestStamp(data))}</p>
+            ${posts.length ? `
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>投稿日</th>
+                      <th>SNS</th>
+                      <th>テーマ</th>
+                      <th>内容</th>
+                      <th>Imp/再生</th>
+                      <th>入力者</th>
+                      <th>入力・更新時刻</th>
+                    </tr>
+                  </thead>
+                  <tbody>${postRows}</tbody>
+                </table>
+              </div>` : `<p class="empty">投稿データはありません。</p>`}
+          </div>
+        </article>`;
+    }
+
+    function refresh() {
+      snapshots = collectSnapshots();
+      document.querySelector("#results").innerHTML = snapshots.map(renderSnapshot).join("");
+      const valid = snapshots.filter(item => item.found && item.valid);
+      const invalid = snapshots.filter(item => item.found && !item.valid);
+      const status = document.querySelector("#status");
+      if (!valid.length && !invalid.length) {
+        status.textContent = "このブラウザでは候補データが見つかりませんでした。入力時と同じブラウザ・プロフィールか確認してください。";
+        status.className = "status error";
+      } else {
+        const posts = valid.reduce((sum, item) => sum + countRows(item.data, "posts"), 0);
+        status.textContent = `候補${valid.length + invalid.length}件、解析できた投稿は合計${posts}件です。まず緊急バックアップを保存してください。`;
+        status.className = "status ok";
+      }
+      document.querySelector("#download-all").disabled = !snapshots.some(item => item.found);
+      document.querySelector("#download-posts").disabled = !valid.some(item => countRows(item.data, "posts"));
+    }
+
+    function localTimestamp() {
+      const now = new Date();
+      const parts = [
+        now.getFullYear(),
+        String(now.getMonth() + 1).padStart(2, "0"),
+        String(now.getDate()).padStart(2, "0"),
+        "_",
+        String(now.getHours()).padStart(2, "0"),
+        String(now.getMinutes()).padStart(2, "0"),
+        String(now.getSeconds()).padStart(2, "0")
+      ];
+      return parts.join("");
+    }
+
+    function download(filename, content, type) {
+      const blob = new Blob([content], { type });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      anchor.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    }
+
+    function downloadEmergencyBackup() {
+      const found = snapshots.filter(item => item.found);
+      if (!found.length) return;
+      const payload = {
+        rescueFormat: "yokazu-browser-storage-rescue-v1",
+        exportedAt: new Date().toISOString(),
+        page: location.href,
+        userAgent: navigator.userAgent,
+        snapshots: found.map(item => ({
+          key: item.key,
+          validJson: Boolean(item.valid),
+          raw: item.raw
+        }))
+      };
+      download(
+        `よかずSNS運用報告_緊急救出_${localTimestamp()}.json`,
+        JSON.stringify(payload, null, 2),
+        "application/json;charset=utf-8"
+      );
+      const status = document.querySelector("#status");
+      status.textContent = "緊急バックアップをダウンロードしました。ファイルを閉じたり削除したりせず保管してください。";
+      status.className = "status ok";
+    }
+
+    function csvCell(value) {
+      return `"${String(value ?? "").replaceAll('"', '""')}"`;
+    }
+
+    function downloadPostsCsv() {
+      const rows = snapshots
+        .filter(item => item.found && item.valid)
+        .flatMap(item => (Array.isArray(item.data.posts) ? item.data.posts : [])
+          .map(post => [
+            item.key,
+            post.id || "",
+            post.date || "",
+            post.postTime || "",
+            post.sns || "",
+            post.postType || "",
+            post.theme || "",
+            post.content || "",
+            post.postUrl || "",
+            post.impressions ?? 0,
+            post.likes ?? 0,
+            post.comments ?? 0,
+            post.shares ?? 0,
+            post.saves ?? 0,
+            post.profileAccesses ?? 0,
+            post.linkClicks ?? 0,
+            post.operator || "",
+            post.inputAt || "",
+            post.updatedAt || ""
+          ]));
+      if (!rows.length) return;
+      const headers = [
+        "保存キー", "ID", "投稿日", "投稿時間", "SNS", "投稿形式", "投稿テーマ",
+        "投稿内容", "投稿URL", "Imp/再生", "いいね", "コメント", "シェア", "保存",
+        "プロフィール", "リンク", "入力者", "入力時間", "更新時間"
+      ];
+      const csv = "\ufeff" + [headers, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+      download(
+        `よかずSNS運用報告_救出投稿一覧_${localTimestamp()}.csv`,
+        csv,
+        "text/csv;charset=utf-8"
+      );
+    }
+
+    document.querySelector("#download-all").addEventListener("click", downloadEmergencyBackup);
+    document.querySelector("#download-posts").addEventListener("click", downloadPostsCsv);
+    document.querySelector("#refresh").addEventListener("click", refresh);
+    refresh();
+  </script>
+</body>
+</html>
