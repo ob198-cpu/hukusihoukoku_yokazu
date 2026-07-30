@@ -3656,7 +3656,11 @@ body.modal-open {
         error.responseData = result.data || null;
         throw error;
       }
-      return result.data || {};
+      const responseData = result.data || {};
+      if (responseData.systemKey && String(responseData.systemKey) !== CLOUD_SYSTEM_KEY) {
+        throw new Error("保存先の確認に失敗しました。別事業所への保存を防止しました。");
+      }
+      return responseData;
     }
 
     function cloudDataHasRows(snapshot) {
@@ -3718,14 +3722,19 @@ body.modal-open {
               expectedUpdatedAt: cloudRevision,
               clientId: CLOUD_CLIENT_ID
             });
-            const confirmed = normalizeData(result.data || pending.data);
+            if (!result.data) throw new Error("サーバーから保存後の読戻しデータを取得できませんでした。");
+            const confirmed = normalizeData(result.data);
+            const expected = normalizeData(pending.data);
+            if (!window.SnsSyncMerge.equal(confirmed, expected)) {
+              throw new Error("サーバーの読戻し内容が送信内容と一致しません。");
+            }
             persistCloudBase(confirmed, result.updatedAt || cloudRevision);
 
             const latestPending = readPendingCloudWrite();
             if (latestPending && latestPending.id === pending.id) {
               clearPendingCloudWrite(pending.id);
               applySyncedData(confirmed, false);
-              setCloudStatus("シート保存済み（サーバー確認済み）", "ok");
+              setCloudStatus("シート保存済み（サーバー読戻し確認済み）", "ok");
               return;
             }
             continue;
