@@ -2165,6 +2165,31 @@ tbody tr:nth-child(even) td {
   margin-bottom: 20px;
 }
 
+.impression-trend-section {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border-color);
+}
+
+.impression-trend-section .follower-chart-grid {
+  margin-bottom: 18px;
+}
+
+.summary-overview-table {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.summary-overview-table table {
+  min-width: 900px;
+}
+
+.summary-overview-table th,
+.summary-overview-table td {
+  white-space: nowrap;
+}
+
 .follower-chart-card {
   min-width: 0;
   border: 1px solid var(--border-color);
@@ -2346,6 +2371,49 @@ tbody tr:nth-child(even) td {
 @media (max-width: 1100px) {
   .follower-chart-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 700px) {
+  .summary-range-controls {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .summary-range-controls > * {
+    min-width: 0;
+  }
+
+  .summary-range-controls > .btn {
+    grid-column: 1 / -1;
+    width: 100%;
+  }
+
+  .summary-range-controls input[type="date"] {
+    min-width: 0;
+    padding-inline: 8px;
+  }
+
+  .follower-chart-card {
+    padding: 14px 10px;
+  }
+
+  .follower-chart-bars {
+    gap: 5px;
+    padding: 8px 3px 0;
+  }
+
+  .follower-chart-col {
+    min-width: 0;
+  }
+
+  .follower-stacked-bar,
+  .follower-bar {
+    width: min(34px, 100%);
+  }
+
+  .follower-chart-value,
+  .follower-chart-label {
+    font-size: 9px;
   }
 }
 
@@ -3005,14 +3073,37 @@ body.modal-open {
               <strong id="summary-total-followers">0人</strong>
             </div>
           </div>
-          <table>
-            <thead>
-              <tr>
-                <th>総インプレッション/再生数</th><th>総フォロワー数</th><th>問い合わせ</th><th>利用者問い合わせ</th><th>職員問い合わせ</th><th>L前週まで送信数</th><th>L今週送信数</th><th>L残通数</th>
-              </tr>
-            </thead>
-            <tbody id="summary-body"></tbody>
-          </table>
+          <section class="impression-trend-section" aria-labelledby="impression-trend-title">
+            <h3 class="summary-section-title" id="impression-trend-title">インプレッション数の推移</h3>
+            <div class="follower-chart-grid">
+              <section class="follower-chart-card">
+                <div class="follower-chart-head">
+                  <h4>月次合計</h4>
+                  <span>SNS別の内訳</span>
+                </div>
+                <div class="follower-chart-legend" id="impression-month-legend"></div>
+                <div class="follower-chart-bars" id="impression-month-chart"></div>
+              </section>
+              <section class="follower-chart-card">
+                <div class="follower-chart-head">
+                  <h4>SNS別時系列</h4>
+                  <span id="impression-series-label">X・週次</span>
+                </div>
+                <div class="follower-sns-switch" id="impression-sns-switch" role="group" aria-label="インプレッション推移に表示するSNS"></div>
+                <div class="follower-chart-bars" id="impression-series-chart"></div>
+              </section>
+            </div>
+          </section>
+          <div class="summary-overview-table">
+            <table>
+              <thead>
+                <tr>
+                  <th>総インプレッション/再生数</th><th>総フォロワー数</th><th>問い合わせ</th><th>利用者問い合わせ</th><th>職員問い合わせ</th><th>L前週まで送信数</th><th>L今週送信数</th><th>L残通数</th>
+                </tr>
+              </thead>
+              <tbody id="summary-body"></tbody>
+            </table>
+          </div>
         </div>
 
         <div class="summary-panel" data-summary-panel="followers">
@@ -3168,6 +3259,7 @@ body.modal-open {
     let summaryBreakdownMode = "week";
     let workBreakdownMode = "day";
     let workDisplayMode = "list";
+    let impressionTrendSns = "X";
     let followerTrendSns = "X";
     let followerTableMode = "week";
     let cloudSyncReady = false;
@@ -5233,6 +5325,7 @@ body.modal-open {
           <td><span class="pill ${lstep.remaining <= 20 ? "danger" : "ok"}">${lstep.remaining}</span></td>
         </tr>`;
       }).join("");
+      renderImpressionSummary(selectedBusiness);
       renderFollowerSummary(selectedBusiness);
       renderSummaryWorkMetrics();
       const periodLabel = summaryBreakdownLabels()[summaryBreakdownMode];
@@ -5267,6 +5360,103 @@ body.modal-open {
       const rows = data.workMetrics.filter(item => isInSummaryRange(item.date));
       $("#summary-work-count").textContent = `${rows.length}件`;
       $("#summary-work-metrics").innerHTML = workMetricChartForRowsHtml(rows, "day");
+    }
+
+    function impressionSnsColor(sns) {
+      return {
+        X: "#111111",
+        Instagram: "#e1306c",
+        TikTok: "#7a7a7a",
+        Threads: "#ffffff",
+        YouTube: "#ff0000"
+      }[sns] || "#64748b";
+    }
+
+    function impressionSnsBarStyle(sns) {
+      const outline = sns === "Threads" ? "box-shadow:inset 0 0 0 1px #94a3b8;" : "";
+      return `background:${impressionSnsColor(sns)};${outline}`;
+    }
+
+    function impressionTrendRows(mode, selectedBusiness = "合計") {
+      const grouped = new Map();
+      data.posts.filter(post =>
+        (selectedBusiness === "合計" || post.business === selectedBusiness) &&
+        snsTypes.includes(post.sns) &&
+        isThroughToday(post.date) &&
+        isInSummaryRange(post.date)
+      ).forEach(post => {
+        const period = summaryPeriodInfo(post.date, mode);
+        const key = `${period.key}_${post.sns}`;
+        const current = grouped.get(key) || {
+          period: period.key,
+          label: period.label,
+          sns: post.sns,
+          impressions: 0
+        };
+        current.impressions += Number(post.impressions || 0);
+        grouped.set(key, current);
+      });
+      return Array.from(grouped.values()).sort((a, b) =>
+        a.period.localeCompare(b.period) || snsTypes.indexOf(a.sns) - snsTypes.indexOf(b.sns)
+      );
+    }
+
+    function impressionMonthlyChartHtml(selectedBusiness) {
+      const rows = impressionTrendRows("month", selectedBusiness);
+      const periods = Array.from(new Map(rows.map(row => [row.period, row.label])).entries()).slice(-6);
+      const byPeriodSns = new Map(rows.map(row => [`${row.period}_${row.sns}`, row.impressions]));
+      const totals = periods.map(([period]) =>
+        snsTypes.reduce((sum, sns) => sum + Number(byPeriodSns.get(`${period}_${sns}`) || 0), 0)
+      );
+      const max = Math.max(...totals, 1);
+      return periods.map(([period, label], periodIndex) => {
+        const total = totals[periodIndex] || 0;
+        const height = total ? Math.max(30, Math.round((total / max) * 150)) : 10;
+        const segments = snsTypes.map(sns => {
+          const value = Number(byPeriodSns.get(`${period}_${sns}`) || 0);
+          return value
+            ? `<div class="follower-stack-segment" style="flex:${value};${impressionSnsBarStyle(sns)}" title="${escapeHtml(sns)} ${value.toLocaleString()}回"></div>`
+            : "";
+        }).join("");
+        return `
+          <div class="follower-chart-col">
+            <span class="follower-chart-value">${total.toLocaleString()}回</span>
+            <div class="follower-stacked-bar" style="height:${height}px" title="${escapeHtml(label)} 合計 ${total.toLocaleString()}回">${segments}</div>
+            <div class="follower-chart-label">${escapeHtml(label)}</div>
+          </div>
+        `;
+      }).join("") || `<div class="empty-state">グラフに表示するデータがありません。</div>`;
+    }
+
+    function impressionSeriesChartHtml(selectedBusiness, sns) {
+      const rows = impressionTrendRows("week", selectedBusiness);
+      const periods = Array.from(new Map(rows.map(row => [row.period, row.label])).entries()).slice(-8);
+      const byPeriodSns = new Map(rows.map(row => [`${row.period}_${row.sns}`, row.impressions]));
+      const values = periods.map(([period]) => Number(byPeriodSns.get(`${period}_${sns}`) || 0));
+      const max = Math.max(...values, 1);
+      return periods.map(([period, label], index) => {
+        const value = values[index] || 0;
+        const height = value ? Math.max(24, Math.round((value / max) * 150)) : 10;
+        return `
+          <div class="follower-chart-col">
+            <span class="follower-chart-value">${value.toLocaleString()}回</span>
+            <div class="follower-bar" style="height:${height}px;${impressionSnsBarStyle(sns)}" title="${escapeHtml(label)} ${value.toLocaleString()}回"></div>
+            <div class="follower-chart-label">${escapeHtml(dateLabel(period))}週</div>
+          </div>
+        `;
+      }).join("") || `<div class="empty-state">${escapeHtml(sns)}の時系列データがありません。</div>`;
+    }
+
+    function renderImpressionSummary(selectedBusiness) {
+      $("#impression-month-legend").innerHTML = snsTypes.map(sns =>
+        `<span><i style="${impressionSnsBarStyle(sns)}"></i>${escapeHtml(sns)}</span>`
+      ).join("");
+      $("#impression-month-chart").innerHTML = impressionMonthlyChartHtml(selectedBusiness);
+      $("#impression-sns-switch").innerHTML = snsTypes.map(sns => `
+        <button class="follower-sns-btn ${sns === impressionTrendSns ? "active" : ""}" type="button" data-impression-sns="${escapeHtml(sns)}" aria-pressed="${sns === impressionTrendSns}">${escapeHtml(sns)}</button>
+      `).join("");
+      $("#impression-series-label").textContent = `${impressionTrendSns}・週次`;
+      $("#impression-series-chart").innerHTML = impressionSeriesChartHtml(selectedBusiness, impressionTrendSns);
     }
 
     function renderFollowerSummary(selectedBusiness) {
@@ -6417,6 +6607,12 @@ body.modal-open {
       const deleteButton = event.target.closest("[data-delete-record]");
       if (deleteButton) {
         deleteRecord(deleteButton.dataset.deleteRecord, deleteButton.dataset.recordId);
+        return;
+      }
+      const impressionSnsButton = event.target.closest("[data-impression-sns]");
+      if (impressionSnsButton) {
+        impressionTrendSns = impressionSnsButton.dataset.impressionSns;
+        renderImpressionSummary(businesses[0]);
         return;
       }
       const snsButton = event.target.closest("[data-follower-sns]");
