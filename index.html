@@ -961,6 +961,13 @@ textarea { min-height: 90px; resize: vertical; }
   margin-top: 10px;
 }
 
+.report-subsection-divider {
+  height: 2px;
+  margin: 28px 0 20px;
+  border: 0;
+  background: var(--primary);
+}
+
 .large-outline-box {
   position: relative;
   border: 1px solid var(--border-color);
@@ -2525,6 +2532,11 @@ body.modal-open {
   .report-section-divider {
     display: none !important;
   }
+  .report-subsection-divider {
+    height: 1px !important;
+    margin: 16px 0 12px !important;
+    background: #000 !important;
+  }
   .report-title {
     border-bottom: 1px solid #000 !important;
     margin-bottom: 16px !important;
@@ -2716,6 +2728,8 @@ body.modal-open {
               <div class="mock-post-list" id="youtube-posts"></div>
             </div>
           </div>
+
+          <hr class="report-subsection-divider" aria-hidden="true">
 
           <div class="slide2-bottom">
             <div class="large-outline-box">
