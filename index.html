@@ -426,7 +426,7 @@ textarea { min-height: 90px; resize: vertical; }
 }
 
 .report-slide-details {
-  min-height: 680px;
+  min-height: auto;
   scroll-margin-top: 84px;
 }
 
@@ -2260,6 +2260,16 @@ tbody tr:nth-child(even) td {
   display: block;
 }
 
+.summary-breakdown-table {
+  width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+}
+
+.follower-table-panel .summary-breakdown-table table {
+  min-width: 680px;
+}
+
 .follower-table-panel th,
 .follower-table-panel td {
   white-space: nowrap;
@@ -2796,9 +2806,11 @@ body.modal-open {
               <div class="mock-post-list" id="youtube-posts"></div>
             </div>
           </div>
+        </section>
 
-          <hr class="report-subsection-divider" aria-hidden="true">
+        <hr class="report-section-divider" aria-hidden="true">
 
+        <section class="report-slide report-slide-actions">
           <div class="slide2-bottom">
             <div class="large-outline-box">
               <h3>LステップLINE送信通数（<span id="lstep-check-label">〇月〇日</span>チェック）</h3>
@@ -3093,6 +3105,22 @@ body.modal-open {
                 <div class="follower-chart-bars" id="impression-series-chart"></div>
               </section>
             </div>
+            <div class="follower-table-section">
+              <div class="follower-table-switch" role="group" aria-label="インプレッション一覧の表示単位">
+                <button class="follower-table-btn active" type="button" data-impression-table-mode="week">週次一覧</button>
+                <button class="follower-table-btn" type="button" data-impression-table-mode="month">月次一覧</button>
+              </div>
+              <div class="follower-table-panel active" data-impression-table-panel="week">
+                <div class="summary-breakdown-table">
+                  <table><thead><tr><th>週</th><th>SNS</th><th>インプレッション/再生数</th><th>前回比</th><th>増加率</th></tr></thead><tbody id="impression-week-body"></tbody></table>
+                </div>
+              </div>
+              <div class="follower-table-panel" data-impression-table-panel="month">
+                <div class="summary-breakdown-table">
+                  <table><thead><tr><th>月</th><th>SNS</th><th>インプレッション/再生数</th><th>前回比</th><th>増加率</th></tr></thead><tbody id="impression-month-body"></tbody></table>
+                </div>
+              </div>
+            </div>
           </section>
           <div class="summary-overview-table">
             <table>
@@ -3260,6 +3288,7 @@ body.modal-open {
     let workBreakdownMode = "day";
     let workDisplayMode = "list";
     let impressionTrendSns = "X";
+    let impressionTableMode = "week";
     let followerTrendSns = "X";
     let followerTableMode = "week";
     let cloudSyncReady = false;
@@ -5396,9 +5425,41 @@ body.modal-open {
         current.impressions += Number(post.impressions || 0);
         grouped.set(key, current);
       });
-      return Array.from(grouped.values()).sort((a, b) =>
+      const chronological = Array.from(grouped.values()).sort((a, b) =>
+        snsTypes.indexOf(a.sns) - snsTypes.indexOf(b.sns) || a.period.localeCompare(b.period)
+      );
+      const previousBySns = new Map();
+      chronological.forEach(row => {
+        const previous = previousBySns.get(row.sns);
+        row.previous = previous?.impressions || 0;
+        row.diff = previous ? row.impressions - previous.impressions : null;
+        previousBySns.set(row.sns, row);
+      });
+      return chronological.sort((a, b) =>
         a.period.localeCompare(b.period) || snsTypes.indexOf(a.sns) - snsTypes.indexOf(b.sns)
       );
+    }
+
+    function latestImpressionPeriodRows(rows, limit) {
+      const periods = Array.from(new Set(rows.map(row => row.period))).sort().slice(-limit);
+      const periodSet = new Set(periods);
+      return rows.filter(row => periodSet.has(row.period)).sort((a, b) => {
+        const periodCompare = b.period.localeCompare(a.period);
+        if (periodCompare) return periodCompare;
+        return snsTypes.indexOf(a.sns) - snsTypes.indexOf(b.sns);
+      });
+    }
+
+    function impressionTrendTableRows(rows) {
+      return rows.map(row => `
+        <tr>
+          <td>${escapeHtml(row.label)}</td>
+          <td>${escapeHtml(row.sns)}</td>
+          <td>${row.impressions.toLocaleString()}</td>
+          <td>${followerDiffText(row.diff)}</td>
+          <td>${followerRateText(row.diff, row.previous)}</td>
+        </tr>
+      `).join("");
     }
 
     function impressionMonthlyChartHtml(selectedBusiness) {
@@ -5448,6 +5509,10 @@ body.modal-open {
     }
 
     function renderImpressionSummary(selectedBusiness) {
+      const weekRows = latestImpressionPeriodRows(impressionTrendRows("week", selectedBusiness), 12);
+      const monthRows = latestImpressionPeriodRows(impressionTrendRows("month", selectedBusiness), 12);
+      $("#impression-week-body").innerHTML = impressionTrendTableRows(weekRows) || `<tr><td colspan="5">データはありません。</td></tr>`;
+      $("#impression-month-body").innerHTML = impressionTrendTableRows(monthRows) || `<tr><td colspan="5">データはありません。</td></tr>`;
       $("#impression-month-legend").innerHTML = snsTypes.map(sns =>
         `<span><i style="${impressionSnsBarStyle(sns)}"></i>${escapeHtml(sns)}</span>`
       ).join("");
@@ -5457,6 +5522,8 @@ body.modal-open {
       `).join("");
       $("#impression-series-label").textContent = `${impressionTrendSns}・週次`;
       $("#impression-series-chart").innerHTML = impressionSeriesChartHtml(selectedBusiness, impressionTrendSns);
+      $$('[data-impression-table-mode]').forEach(button => button.classList.toggle('active', button.dataset.impressionTableMode === impressionTableMode));
+      $$('[data-impression-table-panel]').forEach(panel => panel.classList.toggle('active', panel.dataset.impressionTablePanel === impressionTableMode));
     }
 
     function renderFollowerSummary(selectedBusiness) {
@@ -6612,6 +6679,12 @@ body.modal-open {
       const impressionSnsButton = event.target.closest("[data-impression-sns]");
       if (impressionSnsButton) {
         impressionTrendSns = impressionSnsButton.dataset.impressionSns;
+        renderImpressionSummary(businesses[0]);
+        return;
+      }
+      const impressionTableButton = event.target.closest("[data-impression-table-mode]");
+      if (impressionTableButton) {
+        impressionTableMode = impressionTableButton.dataset.impressionTableMode;
         renderImpressionSummary(businesses[0]);
         return;
       }
